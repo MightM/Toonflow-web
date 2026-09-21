@@ -37,11 +37,16 @@ export interface AssetNodeDto extends BaseNode {
   voices: { id: number; name: string }[];
 }
 
+/** 自由节点（标为角色的图片）绑定的音色：音色库资产或画布上的音频节点 */
+export type NodeVoice = { kind: "asset"; id: number; name?: string } | { kind: "node"; key: string; name?: string };
+
 export interface MediaNodeDto extends BaseNode {
   kind: MediaKind;
   params: Record<string, unknown>;
   /** 类型标签（人物 / 场景 / 道具），未标注为 null */
   assetType: AssetType | null;
+  /** 标为角色的图片节点绑定的音色（后端解析出名字） */
+  voice?: { kind: "asset" | "node"; name: string } | null;
   /** 后端按参考形状自动选出的模型与理由；资产画布不提供，用户仍手选 */
   auto?: { model: string; auto: boolean; reason: string } | null;
   /** 锁定的时长（镜头台用分镜表算出的片段时长），不让用户在常规面板上改 */

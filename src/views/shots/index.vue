@@ -219,7 +219,7 @@ const lastPreset = ref<Record<string, string>>(JSON.parse(localStorage.getItem("
 
 // ─── 把镜头包成画布节点，直接复用 NodeComposer / HistoryDrawer ──────────────
 // 镜头的节点 key 是 s:<id>，后端 /api/canvas/* 已经认这种 key，所以输入面板、
-// 目标模板、扩写、模型 mode 校验、场景排图1 全部白拿，行为与资产画布一致。
+// 目标模板、优化、模型 mode 校验、场景排图1 全部白拿，行为与资产画布一致。
 const asNode = (shot: ShotDto): MediaNodeDto => ({
   key: shot.key,
   id: shot.id,
@@ -250,7 +250,7 @@ const poolAsNode = (item: PoolItem): MediaNodeDto => ({
 const composerDto = computed(() => (current.value ? asNode(current.value) : null));
 
 // 视频面板作用在「这一镜所属的片段」上（默认一镜一段）。
-// 同样包成画布视频节点，NodeComposer 就给出模型、时长/分辨率/音频、@引用、按官方模板扩写。
+// 同样包成画布视频节点，NodeComposer 就给出模型、时长/分辨率/音频、@引用、按官方模板优化。
 const videoDto = computed<MediaNodeDto | null>(() => {
   const track = trackOfCurrent.value;
   if (!track) return null;
@@ -452,7 +452,7 @@ const ctx: CanvasContext = {
   // 「人物四视图」「场景三视图」之类是资产用的，别出现在镜头面板里
   presets: computed(() => shots.presets.value.filter((p) => p.targets.includes("shot"))),
   lastPresetOf: (key) => lastPreset.value[key],
-  // 镜头默认走「分镜图」模板（有扩写）；连了别的镜头图时默认「换个角度」
+  // 镜头默认走「分镜图」模板（有优化）；连了别的镜头图时默认「换个角度」
   defaultPresetFor: (key, hasRefs) => {
     if (!key.startsWith("s:")) return null;
     const refs = shots.refsOf(key);
@@ -463,7 +463,7 @@ const ctx: CanvasContext = {
   reorderRefs: (targetKey, edgeIds) => shots.reorderRefs(targetKey, edgeIds),
   removeRef: (targetKey, sourceKey) => shots.removeRef(targetKey, sourceKey),
   openRefPicker,
-  // 这里的「扩写」其实是按剧本 + 画面描述 + 参考推提示词，叫扩写容易被当成润色
+  // 这里的「优化」其实是按剧本 + 画面描述 + 参考推提示词，所以另给文案
   polishLabel: (isVideo) => (isVideo ? "推理提示词" : "重新推理提示词"),
   selectedCount: computed(() => 1),
   renameNode: async () => window.$message.info("镜头的名字跟着序号走，不能改"),
@@ -540,7 +540,7 @@ function applyPrompt(key: string, text: string) {
     ...draft,
     audio: draft?.audio ?? false,
     prompt: text,
-    undoText: draft?.prompt ?? current.value?.prompt ?? null, // 还能点「撤销扩写」退回去
+    undoText: draft?.prompt ?? current.value?.prompt ?? null, // 还能点「撤销」退回去
     polishedBy: "",
   });
   composerSeq.value += 1;

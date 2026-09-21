@@ -34,6 +34,10 @@
       @selection-end="onSelectionEnd"
       @move-end="onMoveEnd"
       @dblclick="onPaneDblclick">
+      <!-- 「存入资产库」会把自由节点变成资产节点，所以这里也要能渲染资产 -->
+      <template #node-asset="nodeProps">
+        <AssetNode v-bind="nodeProps" />
+      </template>
       <template #node-media="nodeProps">
         <MediaNode v-bind="nodeProps" />
       </template>
@@ -65,6 +69,7 @@
       <t-tooltip content="从资产中心导入素材" placement="top"><button aria-label="从资产中心导入素材" @click="openLibrary"><i-box size="20" /></button></t-tooltip>
       <t-tooltip content="查看历史" placement="top"><button aria-label="查看历史" @click="openHistory(null)"><i-history size="20" /></button></t-tooltip>
       <span class="rule" />
+      <t-tooltip content="资产模型绑定" placement="top"><button aria-label="资产模型绑定" @click="modelsVisible = true"><i-setting-two size="20" /></button></t-tooltip>
       <t-tooltip content="重新整理布局" placement="top"><button aria-label="重新整理布局" @click="relayout"><i-tree-diagram size="20" /></button></t-tooltip>
     </nav>
 
@@ -82,14 +87,7 @@
     </div>
 
     <!-- 多选：整组生成 -->
-    <div v-if="selection.length >= 2" class="group-bar glass">
-      <span class="picked">已选 {{ selection.length }} 个节点</span>
-      <button v-if="selectedImages.length >= 2" class="accent" @click="deriveFrom(selectedImages, 'video')"><i-video-two size="14" />{{ selectedImages.length }} 图生视频</button>
-      <button v-else class="accent" @click="deriveFrom(selection, 'video')"><i-video-two size="14" />生成视频</button>
-      <button @click="deriveFrom(selection, 'image')"><i-pic size="14" />生成图片</button>
-      <button v-if="selectedTexts.length" @click="deriveFrom(selectedTexts, 'audio')"><i-voice size="14" />生成语音</button>
-      <span class="hint">按选中顺序排成 图1、图2…</span>
-    </div>
+    <GroupActionBar :selection="selection" @derive="deriveFrom" />
 
     <div v-if="!canvas.loading.value && canvas.nodes.value.length === 0" class="empty-state glass">
       <i-mind-mapping size="36" />
@@ -106,6 +104,10 @@
     <ConnectMenu :state="connectMenu" variant="free" @pick="onMenuPick" @close="connectMenu = null" />
     <HistoryDrawer v-model:visible="historyVisible" :target="historyTarget" @preview="openPreview" />
     <MediaLightbox v-model:visible="preview.visible" :src="preview.src" :kind="preview.kind" />
+    <SaveToAssetsDialog v-model:visible="saveVisible" :node-key="saveKey" />
+    <CreateStateDialog v-model:visible="stateVisible" :parent-key="stateParent" @create="onCreateState" />
+    <AssetModelsDialog v-if="projectId" v-model:visible="modelsVisible" :project-id="projectId" @saved="canvas.refresh" />
+    <VoicePicker v-model:visible="voiceVisible" :node-key="voiceKey" @bind="bindVoice" />
   </div>
 </template>
 
@@ -121,26 +123,37 @@ import "@vue-flow/minimap/dist/style.css";
 import projectStore from "@/stores/project";
 import openAssetsSelector from "@/utils/assetsCheck";
 import MediaNode from "../canvas/nodes/MediaNode.vue";
+import AssetNode from "../canvas/nodes/AssetNode.vue";
+import CreateStateDialog from "../canvas/components/CreateStateDialog.vue";
+import AssetModelsDialog from "../canvas/components/AssetModelsDialog.vue";
 import RefEdge from "../canvas/components/RefEdge.vue";
 import MediaLightbox from "../canvas/components/MediaLightbox.vue";
 import HistoryDrawer from "../canvas/components/HistoryDrawer.vue";
 import ConnectMenu, { type ConnectMenuKind } from "../canvas/components/ConnectMenu.vue";
+import GroupActionBar from "../canvas/components/GroupActionBar.vue";
+import VoicePicker from "../canvas/components/VoicePicker.vue";
+import SaveToAssetsDialog from "../canvas/components/SaveToAssetsDialog.vue";
 import { canvasApi, readAsDataUrl } from "../canvas/api";
 import { CANVAS_CTX, type CanvasContext } from "../canvas/context";
 import { useCanvas, confirmDialog, type CanvasNode } from "../canvas/useCanvas";
 import { MULTI_SELECT_KEYS, UNDO_HINT, useCanvasInteractions } from "../canvas/useCanvasInteractions";
 import { useFrameCapture } from "../canvas/useFrameCapture";
-import type { ArtStyleDto, CanvasPreset, MediaKind } from "../canvas/types";
+import type { CanvasPreset, MediaKind } from "../canvas/types";
 
 const router = useRouter();
 const { project } = storeToRefs(projectStore());
 const projectId = computed(() => Number(project.value?.id ?? 0));
 const scriptId = ref<number | null>(null); // 无限画布没有集数
 
-const NODE_GAP = 70;
 const FRAME_WIDTH = 384; // frame 式卡片宽度（MediaNode .frame），排版与落位按它算
 const KIND_COLOR: Record<string, string> = { text: "#f59e0b", image: "#2563eb", video: "#8b5cf6", audio: "#0ea5e9" };
 const canvas = useCanvas(projectId, scriptId, { mediaWidth: FRAME_WIDTH });
+// 存入资产库弹窗（弹窗状态先于交互层声明，快捷键在弹窗打开时不响应）
+const saveVisible = ref(false);
+const saveKey = ref<string | null>(null);
+const stateVisible = ref(false);
+const stateParent = ref<string | null>(null);
+const modelsVisible = ref(false);
 const {
   flow,
   zoomIn,
@@ -182,14 +195,28 @@ const {
   preview,
   openPreview,
   deleteWithHint,
-} = useCanvasInteractions({ flowId: "freeCanvas", canvas, projectId });
+  defaultParams,
+  selection,
+  deriveFrom,
+  artStyles,
+  voiceVisible,
+  voiceKey,
+  openVoice,
+  bindVoice,
+} = useCanvasInteractions({
+  flowId: "freeCanvas",
+  canvas,
+  projectId,
+  extraDialogOpen: () => saveVisible.value || stateVisible.value || modelsVisible.value,
+  projectArtStyle: () => project.value?.artStyle,
+});
 
 onMounted(async () => {
   if (!projectId.value) {
     window.$message.warning("请先打开一个项目");
     return router.replace("/project");
   }
-  await Promise.all([canvas.load(false), loadPresets(), loadArtStyles()]);
+  await Promise.all([canvas.load(false), loadPresets()]);
   await nextTick();
   await restoreViewport();
 });
@@ -210,8 +237,6 @@ async function relayout() {
   await reload();
 }
 
-// 新建图片节点默认带上项目绑定的画风（可在节点上换或清除）
-const defaultParams = (kind: MediaKind) => (kind === "image" && project.value?.artStyle ? { artStyle: project.value.artStyle } : undefined);
 async function addNode(kind: MediaKind) {
   const key = await canvas.createNode(kind, viewportCenter(), undefined, defaultParams(kind));
   if (key) selectOnly(key);
@@ -229,37 +254,16 @@ async function onMenuPick(kind: ConnectMenuKind) {
   if (key) selectOnly(key);
 }
 
-// ─── 多选整组生成：以选中的节点为参考新建下游节点，按选中顺序连线（决定图1、图2…） ─────────
-const selection = computed(() => getSelectedNodes.value.map((n) => n.id));
-const kindOf = (key: string) => canvas.dtoByKey.value.get(key)?.kind;
-const selectedImages = computed(() => selection.value.filter((k) => kindOf(k) === "image"));
-const selectedTexts = computed(() => selection.value.filter((k) => kindOf(k) === "text"));
-async function deriveFrom(sourceKeys: string[], kind: MediaKind) {
-  if (!sourceKeys.length) return;
-  // 放在最右边那个源节点的右侧、第一个源节点的高度
-  const sources = sourceKeys.map((k) => flow.findNode(k)).filter((n): n is NonNullable<typeof n> => !!n);
-  const right = Math.max(...sources.map((n) => n.position.x + (n.dimensions?.width || FRAME_WIDTH)));
-  const position = { x: Math.round(right + NODE_GAP), y: Math.round(sources[0]?.position.y ?? 0) };
-  const key = await canvas.run(async () => {
-    const created = await canvas.createNode(kind, position, undefined, defaultParams(kind));
-    if (!created) return undefined;
-    for (const source of sourceKeys) await canvasApi.addEdge(projectId.value, source, created);
-    await canvas.refresh();
-    return created;
-  }, "生成节点失败");
-  if (!key) return;
-  selectOnly(key);
-  await nextTick();
-  await focusNode(key);
-}
-
 // ─── 从资产中心导入素材（复制成画布上的自由节点） ─────────────────
 async function openLibrary() {
   const picked = await openAssetsSelector({ title: "从资产中心导入", types: ["clip", "audio"], selectorMode: true, multiple: true });
-  const items = picked.filter((a) => a.src);
-  if (!items.length) return;
+  // 音色资产（父级）本身没有文件，样本在子项里；拿第一条样本当作导入的音频
+  const items = picked.map((a) => ({ ...a, src: a.src || (a as { sonAssets?: { src?: string }[] }).sonAssets?.find((s) => s.src)?.src || "" }));
+  const skipped = items.filter((a) => !a.src);
+  if (skipped.length) window.$message.warning(`「${skipped.map((a) => a.name).join("、")}」没有可导入的文件`);
+  if (!items.some((a) => a.src)) return;
   let last: string | undefined;
-  for (const [i, item] of items.entries()) {
+  for (const [i, item] of items.filter((a) => a.src).entries()) {
     last = await canvas.run(async () => {
       const blob = await (await fetch(item.src)).blob();
       const base64Data = await readAsDataUrl(new File([blob], item.name, { type: blob.type }));
@@ -275,15 +279,16 @@ async function openLibrary() {
 
 const miniNodeColor = (node: CanvasNode) => KIND_COLOR[node.data?.dto.kind ?? ""] ?? "#8b5cf6";
 
-// 画风清单（视觉手册）
-const artStyles = ref<ArtStyleDto[]>([]);
-async function loadArtStyles() {
-  try {
-    artStyles.value = await canvasApi.listArtStyles();
-  } catch {
-    artStyles.value = [];
-  }
+// 新建状态（存入资产库之后的资产节点也能派生状态，与资产画布一致）
+function openCreateState(key: string) {
+  stateParent.value = key;
+  stateVisible.value = true;
 }
+async function onCreateState(payload: { parentKey: string; name: string; describe: string }) {
+  const key = await canvas.createState(payload.parentKey, payload.name, payload.describe, payload.describe);
+  if (key) selectOnly(key);
+}
+
 // 视频截帧
 const { captureFrame } = useFrameCapture({
   canvas,
@@ -297,13 +302,12 @@ const { captureFrame } = useFrameCapture({
 const presets = ref<CanvasPreset[]>([]);
 async function loadPresets() {
   try {
-    presets.value = (await canvasApi.getPresets(projectId.value)).filter((p) => p.targets.includes("free") || p.targets.includes("image"));
+    presets.value = await canvasApi.getPresets(projectId.value);
   } catch {
     presets.value = [];
   }
 }
 
-const noop = () => undefined;
 const ctx: CanvasContext = {
   projectId,
   defaults: computed(() => canvas.data.value?.defaults ?? null),
@@ -326,15 +330,16 @@ const ctx: CanvasContext = {
   artStyles: computed(() => artStyles.value),
   setArtStyle: canvas.setArtStyle,
   captureFrame: (key, at) => void captureFrame(key, at),
-  // 无限画布没有资产：状态 / 音色 / 存入资产库都不提供
-  openCreateState: noop,
-  openVoice: noop,
+  openCreateState,
+  openVoice,
+  openSaveToAssets: (key) => {
+    saveKey.value = key;
+    saveVisible.value = true;
+  },
   openHistory,
   openPreview,
   uploadTo,
   deleteNode: (key) => void deleteWithHint([key]),
-  // 图片 / 视频节点的按钮文案：这里都叫「优化提示词」（资产画布仍叫「扩写」）
-  polishLabel: () => "优化提示词",
 };
 provide(CANVAS_CTX, ctx);
 </script>
@@ -350,79 +355,7 @@ provide(CANVAS_CTX, ctx);
   color: var(--td-text-color-secondary);
   white-space: nowrap;
 }
-.group-bar {
-  position: absolute;
-  left: 50%;
-  bottom: 84px; // 工具栏在底部居中，整组栏放它上面
-  transform: translateX(-50%);
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 8px 6px 12px;
-  border-radius: 14px;
-  .picked {
-    margin-right: 4px;
-    font-size: 12px;
-    color: var(--td-text-color-secondary);
-  }
-  button {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    height: 30px;
-    padding: 0 12px;
-    border: none;
-    border-radius: 9px;
-    background: var(--td-bg-color-secondarycontainer);
-    color: var(--td-text-color-primary);
-    font-size: 12px;
-    cursor: pointer;
-    transition: background-color 150ms, transform 150ms;
-    &:hover {
-      background: var(--td-bg-color-container-hover);
-    }
-    &:active {
-      transform: scale(0.96);
-    }
-    &.accent {
-      background: var(--td-brand-color);
-      color: #fff;
-      &:hover {
-        background: var(--td-brand-color-hover);
-      }
-    }
-  }
-  .hint {
-    margin-left: 6px;
-    font-size: 11px;
-    color: var(--td-text-color-placeholder);
-  }
-}
 .empty-state {
   max-width: 460px;
-  .starters {
-    display: flex;
-    justify-content: center;
-    gap: 8px;
-    margin-top: 16px;
-    button {
-      display: inline-flex;
-      align-items: center;
-      gap: 5px;
-      height: 32px;
-      padding: 0 14px;
-      border-radius: 10px;
-      border: 1px solid var(--td-component-stroke);
-      background: var(--td-bg-color-container);
-      color: var(--td-text-color-primary);
-      font-size: 12px;
-      cursor: pointer;
-      transition: border-color 150ms, transform 150ms;
-      &:hover {
-        border-color: var(--td-brand-color);
-        transform: translateY(-1px);
-      }
-    }
-  }
 }
 </style>

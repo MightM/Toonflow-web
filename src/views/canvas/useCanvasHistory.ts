@@ -15,7 +15,7 @@ export type UndoOp =
   | { type: "reorder"; target: string; order: string[] } // 撤销调序
   | { type: "delete"; key: string } // 撤销新建
   | { type: "restore"; trashId: number } // 撤销删除（从回收站恢复）
-  | { type: "update"; key: string; name?: string; assetType?: AssetType | null }; // 撤销改名 / 改类型
+  | { type: "update"; key: string; name?: string; assetType?: AssetType | null; params?: Record<string, unknown> }; // 撤销改名 / 改类型 / 改参数（音色、画风）
 
 interface UndoEntry {
   label: string;
@@ -104,7 +104,7 @@ export function useCanvasHistory(deps: HistoryDeps) {
       case "restore":
         return (await canvasApi.restoreNode(projectId, op.trashId)).keyMap;
       case "update":
-        await canvasApi.updateNode({ projectId, key: op.key, name: op.name, assetType: op.assetType });
+        await canvasApi.updateNode({ projectId, key: op.key, name: op.name, assetType: op.assetType, params: op.params });
         return {};
     }
   }

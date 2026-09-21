@@ -12,7 +12,7 @@
       <div class="panel nodrag nowheel" @mousedown.stop @wheel.stop>
         <div class="panel-head">
           <strong>画风</strong>
-          <span>扩写按该视觉手册写，生成时追加一行风格词</span>
+          <span>优化时按该视觉手册写，生成时追加一行风格词</span>
         </div>
         <div class="grid">
           <button class="cell none" :class="{ on: !modelValue }" @click="pick(null)">

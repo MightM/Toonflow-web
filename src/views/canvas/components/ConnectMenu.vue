@@ -82,15 +82,15 @@ const items = computed<MenuItem[]>(() => {
     if (s.role === "source") return [media("image"), media("video"), media("audio"), media("text")];
     return [media("text"), media("image"), media("video"), media("audio"), upload];
   }
-  if (!s.from) return [media("image"), media("video"), ...ASSET_ITEMS, upload];
+  if (!s.from) return [media("text"), media("image"), media("video"), media("audio"), ...ASSET_ITEMS, upload];
   if (s.role === "source") {
     const state: MenuItem[] = isAssetNode(s.from)
       ? [{ kind: "state", label: "新建状态", desc: "换装、时段、使用状态…", icon: "branch-one", color: "var(--td-brand-color)" }]
       : [];
-    return [media("image"), media("video"), ...state, ...ASSET_ITEMS];
+    return [media("image"), media("video"), media("audio"), media("text"), ...state, ...ASSET_ITEMS];
   }
   const video = s.from.kind === "video" ? [media("video")] : [];
-  return [media("image"), ...video, upload, ...ASSET_ITEMS];
+  return [media("text"), media("image"), ...video, media("audio"), upload, ...ASSET_ITEMS];
 });
 
 // 贴着松手位置出现，靠近窗口边缘时往里收

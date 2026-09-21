@@ -1,7 +1,7 @@
 import type { Ref } from "vue";
 import type { Edge, Node } from "@vue-flow/core";
 import { canvasApi, errorMessage } from "./api";
-import type { AssetNodeDto, AssetType, CanvasData, CanvasEdgeDto, CanvasNodeDto, FlowNodeData, MediaKind } from "./types";
+import type { AssetNodeDto, AssetType, CanvasData, CanvasEdgeDto, CanvasNodeDto, FlowNodeData, MediaKind, NodeVoice } from "./types";
 import { isAssetNode } from "./types";
 import { useCanvasHistory, type UndoOp } from "./useCanvasHistory";
 
@@ -346,6 +346,19 @@ export function useCanvas(projectId: Ref<number>, scriptId: Ref<number | null>, 
       return true;
     }, "修改类型失败");
 
+  /** 给标为角色的自由图片节点绑音色（音色库资产 / 画布音频节点），null 解绑；可撤销 */
+  const setVoice = (key: string, voice: NodeVoice | null) =>
+    run(async () => {
+      const dto = dtoByKey.value.get(key);
+      if (!dto || isAssetNode(dto)) return false;
+      const before = dto.params ?? {};
+      const stored = voice ? (voice.kind === "asset" ? { kind: "asset", id: voice.id } : { kind: "node", key: voice.key }) : undefined;
+      await canvasApi.updateNode({ projectId: projectId.value, key, params: { ...before, voice: stored } });
+      history.record(voice ? `绑定音色「${voice.name ?? ""}」` : "解绑音色", [{ type: "update", key, params: before }]);
+      await refresh();
+      return true;
+    }, "设置音色失败");
+
   /** 复制节点到指定位置（⌘/Ctrl + V、Option 拖动）；撤销即删除复制出来的节点 */
   const duplicateNodes = (items: { key: string; position: Point }[], sourceProjectId?: number | null) =>
     run(async () => {
@@ -440,6 +453,7 @@ export function useCanvas(projectId: Ref<number>, scriptId: Ref<number | null>, 
     renameNode,
     setAssetType,
     setArtStyle,
+    setVoice,
     duplicateNodes,
     applyPositions,
     recordCreated,

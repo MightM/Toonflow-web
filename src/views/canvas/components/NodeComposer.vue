@@ -180,11 +180,11 @@ const params = computed(() => (!isAssetNode(props.dto) ? ((props.dto as MediaNod
 const presetId = ref<string | null>(null);
 const preset = computed(() => availablePresets.value.find((p) => p.id === presetId.value) ?? null);
 const canPolish = computed(() => (isVideo.value ? !!model.value : !!preset.value?.canPolish));
-const polishLabel = computed(() => ctx.polishLabel?.(isVideo.value) ?? "扩写");
+const polishLabel = computed(() => ctx.polishLabel?.(isVideo.value) ?? "优化");
 const polishTip = computed(() =>
   isVideo.value
     ? "按视频模型绑定的官方提示词模板（如 MiniMax H3 多参考六字段格式），结合连入的参考素材把简短描述改写成完整提示词"
-    : `按「${preset.value?.name}」模板和视觉手册，把简短描述扩写成完整需求`,
+    : `按「${preset.value?.name}」模板和视觉手册，把简短描述优化成完整需求`,
 );
 
 // 兼容没有模板时的资产默认绑定（模板列表加载失败的兜底）
@@ -448,7 +448,7 @@ const blockedReason = computed(() => {
   if (!isVideo.value && preset.value?.requiresRef && !hasRefs.value) return `「${preset.value.name}」需要先把参考图连到这个节点`;
   // 需求为空时发出去的只有模板的排版要求，没有任何内容，出来的图必然不是想要的
   if (!prompt.value.trim() && needsPrompt.value) {
-    return preset.value?.canPolish ? "先写一句要什么，或点「扩写」让模型补全" : "先写一句要什么";
+    return preset.value?.canPolish ? "先写一句要什么，或点「优化」让模型补全" : "先写一句要什么";
   }
   return "";
 });
@@ -531,7 +531,7 @@ async function polish() {
     undoText.value = prompt.value;
     prompt.value = res.text;
   } catch (e) {
-    window.$message.error(errorMessage(e, "扩写失败，请检查「通用 AI」文本模型配置"));
+    window.$message.error(errorMessage(e, "优化失败，请检查「通用 AI」文本模型配置"));
   } finally {
     polishing.value = false;
   }
@@ -543,8 +543,8 @@ function undoPolish() {
   polishedBy.value = "";
 }
 
-// ─── 视频：按模型绑定的官方模板扩写，用户确认后再生成 ─────────────────
-const polishedBy = ref(""); // 扩写所用的规则文件名；用户改了文本也保留，生成后清空
+// ─── 视频：按模型绑定的官方模板优化，用户确认后再生成 ─────────────────
+const polishedBy = ref(""); // 优化所用的规则文件名；用户改了文本也保留，生成后清空
 async function polishVideo() {
   polishing.value = true;
   try {
@@ -560,23 +560,23 @@ async function polishVideo() {
     prompt.value = res.text;
     polishedBy.value = res.rules.replace(/\.md$/, "");
   } catch (e) {
-    window.$message.error(errorMessage(e, "扩写失败，请检查「通用 AI」文本模型配置"));
+    window.$message.error(errorMessage(e, "优化失败，请检查「通用 AI」文本模型配置"));
   } finally {
     polishing.value = false;
   }
 }
-// 扩写后换了模型或参考：编号 / 格式可能对不上了，撤掉「已确认」状态并提醒重新扩写
+// 优化后换了模型或参考：编号 / 格式可能对不上了，撤掉「已确认」状态并提醒重新优化
 watch([model, () => refs.value.map((r) => r.key).join(",")], () => {
   if (!polishedBy.value) return;
   polishedBy.value = "";
-  window.$message.warning("模型或参考素材变了，扩写结果里的参考编号可能对不上，建议重新扩写");
+  window.$message.warning("模型或参考素材变了，优化结果里的参考编号可能对不上，建议重新优化");
 });
-// H3 多参考只认 <Picture N>：没按模板写时提醒先扩写，否则人物容易丢
+// H3 多参考只认 <Picture N>：没按模板写时提醒先优化，否则人物容易丢
 const isH3Reference = computed(() => isVideo.value && /^h3_ref2v/.test(modelNameOf(model.value)));
 const h3Hint = computed(() => {
   if (!isH3Reference.value || !refs.value.some((r) => r.type === "image")) return "";
   if (/subject_definitions\s*:/i.test(prompt.value)) return "";
-  return "H3 多参考要用 <Picture N> 把人物、场景和参考图一一绑定；直接写一句中文容易丢人物或换装，建议先写简短描述再点「扩写」";
+  return "H3 多参考要用 <Picture N> 把人物、场景和参考图一一绑定；直接写一句中文容易丢人物或换装，建议先写简短描述再点「优化」";
 });
 if (draft) {
   undoText.value = draft.undoText ?? null;
@@ -827,7 +827,7 @@ onBeforeUnmount(flushDraft);
   display: flex;
   align-items: center;
   gap: 8px;
-  // 镜头台的面板只有 400px，放不下一行时换行，别把「扩写 / 生成」挤出去
+  // 镜头台的面板只有 400px，放不下一行时换行，别把「优化 / 生成」挤出去
   flex-wrap: wrap;
   > * {
     flex: none;

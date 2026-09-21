@@ -48,8 +48,9 @@ const props = defineProps<{ dto: CanvasNodeDto }>();
 const ctx = useCanvasCtx();
 
 const isAsset = computed(() => isAssetNode(props.dto));
-const isRole = computed(() => isAssetNode(props.dto) && props.dto.assetType === "role");
-const voiceName = computed(() => (isAssetNode(props.dto) ? props.dto.voices[0]?.name : undefined));
+// 角色资产，或标为「角色」的自由图片节点，都能绑音色
+const isRole = computed(() => (isAssetNode(props.dto) ? props.dto.assetType === "role" : props.dto.kind === "image" && props.dto.assetType === "role"));
+const voiceName = computed(() => (isAssetNode(props.dto) ? props.dto.voices[0]?.name : props.dto.voice?.name));
 const src = computed(() => props.dto.current?.src?.replace(/\?size=\d+$/, "") ?? null);
 const kind = computed(() => props.dto.current?.kind ?? "image");
 function onCapture(option: DropdownOption) {

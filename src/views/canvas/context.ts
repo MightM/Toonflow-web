@@ -18,7 +18,7 @@ export interface CanvasContext {
   removeRef?: (targetKey: string, sourceKey: string) => Promise<unknown>;
   /** 打开参考素材选择器（镜头台的「+ 参考」）。画布上靠连线，不提供 */
   openRefPicker?: (targetKey: string) => void;
-  /** 扩写按钮的文案。镜头台叫「推理提示词」，资产画布不提供时用默认的「扩写」 */
+  /** 优化按钮的文案。镜头台叫「推理提示词」，不提供时用默认的「优化」 */
   polishLabel?: (isVideo: boolean) => string;
   /** 当前选中的节点数：多选时不显示单个节点的操作条和输入面板 */
   selectedCount: ComputedRef<number>;

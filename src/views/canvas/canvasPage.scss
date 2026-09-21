@@ -249,3 +249,78 @@ html[theme-mode="dark"] .canvas-page {
 :deep(.vue-flow__node-toolbar) {
   z-index: 2000 !important;
 }
+
+// 多选整组生成栏：底部居中，压在工具栏上方
+.group-bar {
+  position: absolute;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 8px 6px 12px;
+  border-radius: 14px;
+  .picked {
+    margin-right: 4px;
+    font-size: 12px;
+    color: var(--td-text-color-secondary);
+  }
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 30px;
+    padding: 0 12px;
+    border: none;
+    border-radius: 9px;
+    background: var(--td-bg-color-secondarycontainer);
+    color: var(--td-text-color-primary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: background-color 150ms, transform 150ms;
+    &:hover {
+      background: var(--td-bg-color-container-hover);
+    }
+    &:active {
+      transform: scale(0.96);
+    }
+    &.accent {
+      background: var(--td-brand-color);
+      color: #fff;
+      &:hover {
+        background: var(--td-brand-color-hover);
+      }
+    }
+  }
+  .hint {
+    margin-left: 6px;
+    font-size: 11px;
+    color: var(--td-text-color-placeholder);
+  }
+}
+// 空状态的三个入口
+.empty-state .starters {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 16px;
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px;
+    padding: 0 14px;
+    border-radius: 10px;
+    border: 1px solid var(--td-component-stroke);
+    background: var(--td-bg-color-container);
+    color: var(--td-text-color-primary);
+    font-size: 12px;
+    cursor: pointer;
+    transition: border-color 150ms, transform 150ms;
+    &:hover {
+      border-color: var(--td-brand-color);
+      transform: translateY(-1px);
+    }
+  }
+}

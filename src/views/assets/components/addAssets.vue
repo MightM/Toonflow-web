@@ -52,7 +52,6 @@ const addAssetsShow = defineModel<boolean>({
 });
 const rules = ref<{}>({
   name: [{ required: true, message: $t("workbench.assets.add.nameRequired"), trigger: "blur" }],
-  describe: [{ required: true, message: $t("workbench.assets.add.describeRequired"), trigger: "blur" }],
 });
 function handleCancel() {
   addAssetsShow.value = false;

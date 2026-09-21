@@ -2,6 +2,8 @@ import type { Ref } from "vue";
 import { useVueFlow, type Connection, type NodeDragEvent } from "@vue-flow/core";
 import { canvasApi, readAsDataUrl } from "./api";
 import type { ConnectMenuState } from "./components/ConnectMenu.vue";
+import type { ArtStyleDto, MediaKind, NodeVoice } from "./types";
+import { isAssetNode } from "./types";
 import type { CanvasNode, LinkSpec, useCanvas } from "./useCanvas";
 
 // 画板交互（对齐 Figma），资产画布与无限画布共用：
@@ -40,7 +42,10 @@ export interface CanvasInteractionOptions {
   persistViewport?: () => boolean;
   /** 页面自己的弹窗打开时也不响应快捷键 */
   extraDialogOpen?: () => boolean;
+  /** 项目绑定的画风：新建图片节点默认带上 */
+  projectArtStyle?: () => string | null | undefined;
 }
+const NODE_GAP = 70;
 
 export function useCanvasInteractions(options: CanvasInteractionOptions) {
   const { canvas, projectId } = options;
@@ -250,6 +255,68 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
   }
   const linkFromMenu = (menu: ConnectMenuState): LinkSpec | undefined => (menu.from && menu.role ? { key: menu.from.key, role: menu.role } : undefined);
 
+  // ─── 新建节点默认参数 / 整组生成 ────────────────────────
+  /** 新建图片节点默认带上项目绑定的画风（可在节点上换或清除） */
+  const defaultParams = (kind: MediaKind) => {
+    const style = options.projectArtStyle?.();
+    return kind === "image" && style ? { artStyle: style } : undefined;
+  };
+  const selection = computed(() => getSelectedNodes.value.map((n) => n.id));
+  /** 以若干节点为参考新建下游节点，按给定顺序连线（决定图1、图2…），放在最右那个源节点右侧 */
+  async function deriveFrom(sourceKeys: string[], kind: MediaKind) {
+    if (!sourceKeys.length) return;
+    const sources = sourceKeys.map((k) => findNode(k)).filter((n): n is NonNullable<typeof n> => !!n);
+    const right = Math.max(...sources.map((n) => n.position.x + (n.dimensions?.width || MENU_NODE_WIDTH.media)));
+    const position = { x: Math.round(right + NODE_GAP), y: Math.round(sources[0]?.position.y ?? 0) };
+    const key = await canvas.run(async () => {
+      const created = await canvas.createNode(kind, position, undefined, defaultParams(kind));
+      if (!created) return undefined;
+      for (const source of sourceKeys) await canvasApi.addEdge(projectId.value, source, created);
+      await canvas.refresh();
+      return created;
+    }, "生成节点失败");
+    if (!key) return;
+    selectOnly(key);
+    await nextTick();
+    await focusNode(key);
+  }
+
+  // ─── 画风清单（视觉手册，风格胶囊用） ───────────────────
+  const artStyles = ref<ArtStyleDto[]>([]);
+  async function loadArtStyles() {
+    try {
+      artStyles.value = await canvasApi.listArtStyles();
+    } catch {
+      artStyles.value = [];
+    }
+  }
+  onMounted(() => void loadArtStyles());
+
+  // ─── 音色（角色资产 / 标为角色的自由图片节点） ────────────
+  const voiceVisible = ref(false);
+  const voiceKey = ref<string | null>(null);
+  function openVoice(key: string) {
+    voiceKey.value = key;
+    voiceVisible.value = true;
+  }
+  /** VoicePicker 选定后：资产角色写绑定表（只认音色库），自由节点写 params.voice */
+  async function bindVoice(voice: NodeVoice | null) {
+    const key = voiceKey.value;
+    const dto = key ? canvas.dtoByKey.value.get(key) : undefined;
+    if (!key || !dto) return;
+    if (isAssetNode(dto)) {
+      if (voice && voice.kind !== "asset") return void window.$message.warning("资产角色只能绑音色库里的音色");
+      const done = await canvas.run(() => canvasApi.bindVoice(dto.id, voice?.kind === "asset" ? voice.id : undefined), voice ? "绑定音色失败" : "解绑失败");
+      if (done !== undefined) {
+        window.$message.success(voice ? `已绑定音色：${voice.name ?? ""}` : "已解绑音色");
+        await canvas.refresh();
+      }
+      return;
+    }
+    const ok = await canvas.setVoice(key, voice);
+    if (ok) window.$message.success(voice ? `已绑定音色：${voice.name ?? ""}` : "已解绑音色");
+  }
+
   // ─── 上传 ────────────────────────────────────────────
   const fileInput = ref<HTMLInputElement>();
   const uploadTarget = ref<string | null>(null);
@@ -360,7 +427,7 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
   const clearSelection = () => removeSelectedElements();
 
   // ─── 键盘 ────────────────────────────────────────────
-  const anyDialogOpen = () => historyVisible.value || preview.visible || !!connectMenu.value || !!options.extraDialogOpen?.();
+  const anyDialogOpen = () => historyVisible.value || preview.visible || voiceVisible.value || !!connectMenu.value || !!options.extraDialogOpen?.();
   function isTyping(target: EventTarget | null) {
     const el = target as HTMLElement | null;
     return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || !!el.closest(".t-dialog, .t-drawer, .t-popup"));
@@ -469,6 +536,14 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     connectMenu,
     placeFromMenu,
     linkFromMenu,
+    defaultParams,
+    selection,
+    deriveFrom,
+    artStyles,
+    voiceVisible,
+    voiceKey,
+    openVoice,
+    bindVoice,
     fileInput,
     uploadTo,
     uploadFile,
