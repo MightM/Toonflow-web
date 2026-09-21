@@ -34,7 +34,8 @@
       "type": {
         "image": "รูปภาพ",
         "text": "ข้อความ",
-        "video": "วิดีโอ"
+        "video": "วิดีโอ",
+        "tts": "Speech"
       },
       "msg": {
         "fetchModelFailed": "ดึงข้อมูลโมเดลล้มเหลว:"
@@ -428,7 +429,8 @@
       "assetCenter": "ศูนย์สินทรัพย์",
       "settings": "การตั้งค่า",
       "jumpGithub": "ข้ามไปที่ Github",
-      "feedbackQuestions": "คำถามคำติชม"
+      "feedbackQuestions": "คำถามคำติชม",
+      "freeCanvas": "Canvas"
     },
     "project": {
       "title": "โปรเจกต์ของฉัน",
@@ -490,7 +492,13 @@
         "directorManualName": "ชื่อคู่มือผู้อำนวยการ",
         "directorManualNamePh": "กรอกชื่อคู่มือผู้อำนวยการ",
         "directorFile": "เอกสารคู่มือผู้อำนวยการ",
-        "directorManualCover": "ปกคู่มือผู้อำนวยการ"
+        "directorManualCover": "ปกคู่มือผู้อำนวยการ",
+        "artStyleOptional": "Visual manual (optional)",
+        "noArtStyle": "No art style",
+        "canvasHint": "Infinite Canvas: one free canvas where text / image / audio / video nodes link and generate each other, for polishing every clip. Use the Drama Pipeline for batch output.",
+        "pipelineHint": "Drama Pipeline: novel / script → assets → storyboard → video, generated in batch with AI. Use the Infinite Canvas to organise ideas freely and refine clip by clip.",
+        "projectIntro": "Project intro",
+        "projectIntroPh": "A few lines about this project (optional)"
       },
       "msg": {
         "fetchFailed": "ดึงรายการโปรเจกต์ล้มเหลว",
@@ -538,7 +546,29 @@
       },
       "type": {
         "novel": "อิงจากนวนิยายต้นฉบับ",
-        "script": "อิงจากบทนวนิยาย"
+        "script": "อิงจากบทนวนิยาย",
+        "canvas": "Infinite Canvas",
+        "pipeline": "Drama Pipeline"
+      },
+      "mode": {
+        "title": "Choose a project mode",
+        "subtitle": "The two modes keep separate data and cannot be switched after creation",
+        "canvas": {
+          "title": "Infinite Canvas",
+          "tagline": "Flexible and free, for videos you want to craft in detail",
+          "p1": "Add text, image, audio and video nodes and link them as references",
+          "p2": "Text→image, text→video, image→video, multi-image→video, text→speech",
+          "p3": "No episodes or pipeline steps; polish every clip one by one",
+          "fit": "Best for: music videos, ads, idea experiments, single polished clips"
+        },
+        "pipeline": {
+          "title": "Drama Pipeline",
+          "tagline": "Let AI parse the script, generate episodes and stitch shots in batch",
+          "p1": "Novel / script → assets → storyboard → video in one line",
+          "p2": "Script and production agents break down episodes, assets and shots",
+          "p3": "Shot desk renders shot by shot, editor stitches episodes",
+          "fit": "Best for: multi-episode dramas, comic dramas, series"
+        }
       }
     },
     "novel": {

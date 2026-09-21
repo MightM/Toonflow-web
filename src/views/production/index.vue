@@ -1,112 +1,130 @@
 <template>
-  <VueFlow
-    class="flowMain"
-    :class="{ 'is-interacting': isInteracting && otherSetting.interacting, 'space-dragging': isSpacePressed }"
-    id="mainFlowBox"
-    @mousedown="onSpaceMouseDown"
-    :nodes="episodesId ? nodes : []"
-    :edges="episodesId ? edges : []"
-    :nodes-draggable="!isSpacePressed"
-    :nodes-connectable="!isSpacePressed"
-    :elements-selectable="!isSpacePressed"
-    :only-render-visible-elements="false"
-    :max-zoom="10"
-    :min-zoom="0.1"
-    :nodes-focusable="false"
-    :edges-focusable="false"
-    :edges-updatable="false"
-    :elevate-nodes-on-select="true"
-    :elevate-edges-on-select="false"
-    :disable-keyboard-a11y="true"
-    :select-nodes-on-drag="false"
-    :auto-pan-on-node-drag="false"
-    :auto-pan-on-connect="false"
-    :zoom-on-double-click="false"
-    :delete-key-code="null"
-    :zoom-activation-key-code="null"
-    :pan-activation-key-code="null"
-    fit-view-on-init
-    :pan-on-scroll="canvasWheelEvent == 'scroll' ? true : false"
-    :zoom-on-scroll="canvasWheelEvent == 'zoom' ? true : false"
-    :selection-key-code="null"
-    :multi-selection-key-code="null">
-    <template #node-script="props">
-      <scriptNode :id="props.id" v-model="flowData.script" :handleIds="props.data.handleIds" />
-    </template>
-    <template #node-scriptPlan="props">
-      <scriptPlan :id="props.id" v-model="flowData.scriptPlan" :handleIds="props.data.handleIds" />
-    </template>
-    <template #node-storyboardTable="props">
-      <storyboardTable :id="props.id" v-model="flowData.storyboardTable" :handleIds="props.data.handleIds" />
-    </template>
-    <template #node-assets="props">
-      <assets :id="props.id" v-model="flowData.assets" :handleIds="props.data.handleIds" />
-    </template>
-    <template #node-storyboard="props">
-      <storyboard :id="props.id" v-model="flowData.storyboard" :assetsData="flowData.assets" :handleIds="props.data.handleIds" />
-    </template>
-    <template #node-workbench="props">
-      <workbench :id="props.id" v-model="flowData.workbench" :handleIds="props.data.handleIds" />
-    </template>
-    <!-- <template #node-poster="props">
-      <poster :id="props.id" v-model="flowData.poster" :handleIds="props.data.handleIds" />
-    </template> -->
-    <Background></Background>
-    <Controls />
-    <div class="floatingWindow">
-      <div class="episodesSelect f ac">
+  <div class="production-page" :class="[`tool-${tool}`, { 'space-pan': spaceHeld }]">
+    <VueFlow
+      class="flow flowMain"
+      :class="{ 'is-interacting': isInteracting && otherSetting.interacting }"
+      id="mainFlowBox"
+      :nodes="episodesId ? nodes : []"
+      :edges="episodesId ? edges : []"
+      :only-render-visible-elements="false"
+      :max-zoom="10"
+      :min-zoom="0.1"
+      :nodes-focusable="false"
+      :edges-focusable="false"
+      :edges-updatable="false"
+      :elevate-nodes-on-select="true"
+      :elevate-edges-on-select="false"
+      :disable-keyboard-a11y="true"
+      :select-nodes-on-drag="false"
+      :auto-pan-on-node-drag="false"
+      :auto-pan-on-connect="false"
+      :zoom-on-double-click="false"
+      :delete-key-code="null"
+      fit-view-on-init
+      :pan-on-drag="activeTool === 'pan' ? true : [1]"
+      :selection-key-code="activeTool === 'select' ? true : 'Shift'"
+      :multi-selection-key-code="MULTI_SELECT_KEYS"
+      :selection-mode="SelectionMode.Partial"
+      pan-activation-key-code="Space"
+      :pan-on-scroll="true"
+      :zoom-on-scroll="true"
+      :zoom-on-pinch="true">
+      <template #node-script="props">
+        <scriptNode :id="props.id" v-model="flowData.script" :handleIds="props.data.handleIds" />
+      </template>
+      <template #node-scriptPlan="props">
+        <scriptPlan :id="props.id" v-model="flowData.scriptPlan" :handleIds="props.data.handleIds" />
+      </template>
+      <template #node-storyboardTable="props">
+        <storyboardTable :id="props.id" v-model="flowData.storyboardTable" :handleIds="props.data.handleIds" />
+      </template>
+      <template #node-assets="props">
+        <assets :id="props.id" v-model="flowData.assets" :handleIds="props.data.handleIds" />
+      </template>
+      <template #node-storyboard="props">
+        <storyboard :id="props.id" v-model="flowData.storyboard" :assetsData="flowData.assets" :handleIds="props.data.handleIds" />
+      </template>
+      <template #node-workbench="props">
+        <workbench :id="props.id" v-model="flowData.workbench" :handleIds="props.data.handleIds" />
+      </template>
+      <!-- <template #node-poster="props">
+        <poster :id="props.id" v-model="flowData.poster" :handleIds="props.data.handleIds" />
+      </template> -->
+      <Background :gap="22" :size="1.2" pattern-color="var(--canvas-dot)" />
+      <MiniMap pannable zoomable class="minimap" :node-color="miniNodeColor" :mask-color="'var(--canvas-mask)'" />
+    </VueFlow>
+
+    <!-- 顶部：返回 + 项目名 + 集数筛选 -->
+    <header class="topbar">
+      <button class="glass-btn" aria-label="返回" @click="router.back()"><i-left size="18" /></button>
+      <div class="title glass">
+        <span class="eyebrow">生产</span>
+        <strong>{{ project?.name }}</strong>
         <t-select
+          class="episodesSelect episode"
           :value="episodesId"
           :placeholder="$t('workbench.production.selectPlaceholder')"
-          autoWidth
+          size="small"
+          borderless
           :options="episodesOptions"
           filterable
           @change="handleEpisodesChange">
           <template #label>
-            <i-document-folder size="24" />
+            <i-document-folder size="16" />
           </template>
         </t-select>
-        <t-tooltip placement="bottom" theme="primary" :content="$t('workbench.production.getFlowData')">
-          <t-button class="guide-refresh-btn" @click="refFlowData" variant="outline">
-            <template #icon>
-              <i-refresh size="16" />
-            </template>
-          </t-button>
-        </t-tooltip>
-        <t-tooltip placement="bottom" theme="primary" :content="$t('workbench.production.autoLayoutLR')">
-          <t-button class="guide-layout-btn" @click="layoutGraph()" variant="outline" style="margin-left: 8px">
-            <template #icon>
-              <i-tree-diagram size="16" />
-            </template>
-          </t-button>
-        </t-tooltip>
-        <i-loading-four class="spin" size="16" style="margin-left: 0.5rem" v-show="loading"></i-loading-four>
-        <!-- <t-tooltip theme="primary" content="$t('workbench.production.autoLayoutTB')">
-          <div class="item c" @click="layoutGraph('TB')">
-            <i-branch-one theme="outline" size="24" />
-          </div>
-        </t-tooltip> -->
       </div>
-      <div class="openRightChatBoxBtn c" v-show="!openShowVisible" @click.stop="openShowVisible = true">
-        <i-menu-unfold-one theme="outline" size="24" />
-      </div>
-      <transition name="slide" v-show="openShowVisible" v-if="episodesId">
-        <rightChatBox :title="title" v-model="flowData" @close="openShowVisible = false" />
-      </transition>
+    </header>
+
+    <!-- 右侧工具栏：抽屉打开时贴着它的左边缘，关上时回到窗口右侧 -->
+    <nav class="rail glass" aria-label="生产工具" :style="{ right: `${railRight}px` }">
+      <t-tooltip :content="chatOpen ? '收起 AI 助手' : '打开 AI 助手'" placement="left">
+        <button class="openRightChatBoxBtn" :aria-label="chatOpen ? '收起 AI 助手' : '打开 AI 助手'" @click.stop="openShowVisible = !openShowVisible">
+          <i-menu-fold-one v-if="chatOpen" size="20" />
+          <i-menu-unfold-one v-else size="20" />
+        </button>
+      </t-tooltip>
+      <span class="rule" />
+      <t-tooltip :content="$t('workbench.production.getFlowData')" placement="left">
+        <button class="guide-refresh-btn" :aria-label="$t('workbench.production.getFlowData')" @click="refFlowData"><i-refresh size="20" /></button>
+      </t-tooltip>
+      <t-tooltip :content="$t('workbench.production.autoLayoutLR')" placement="left">
+        <button class="guide-layout-btn" :aria-label="$t('workbench.production.autoLayoutLR')" @click="layoutGraph()"><i-tree-diagram size="20" /></button>
+      </t-tooltip>
+      <i-loading-four v-show="loading" class="spin railLoading" size="18" />
+    </nav>
+
+    <!-- 左下：工具切换 + 缩放 -->
+    <div class="dock glass">
+      <button :class="{ active: tool === 'select' }" aria-label="移动 / 框选" title="移动 / 框选（V）：拖动空白处框选，Shift 追加选中" @click="setTool('select')">
+        <i-mouse size="16" />
+      </button>
+      <button :class="{ active: tool === 'pan' }" aria-label="抓手" title="抓手（H）：拖动画布；任何时候按住空格也可拖动" @click="setTool('pan')">
+        <i-palm size="16" />
+      </button>
+      <span class="rule v" />
+      <button aria-label="缩小" @click="zoomOut({ duration: ZOOM_DURATION })"><i-minus size="14" /></button>
+      <span class="zoom">{{ Math.round(viewport.zoom * 100) }}%</span>
+      <button aria-label="放大" @click="zoomIn({ duration: ZOOM_DURATION })"><i-plus size="14" /></button>
+      <button aria-label="适应画布" title="适应画布" @click="fitView({ duration: 300 })"><i-full-screen-one size="14" /></button>
     </div>
+
+    <transition name="slide" v-show="openShowVisible" v-if="episodesId">
+      <rightChatBox :title="title" v-model="flowData" v-model:width="chatWidth" @close="openShowVisible = false" />
+    </transition>
     <t-guide v-model="current" :steps="steps" @finish="() => (current = -1)" />
     <t-tag variant="outline" class="fps" v-if="!openShowVisible">{{ fps }}</t-tag>
-  </VueFlow>
+  </div>
 </template>
 
 <script setup lang="ts">
 import { useLocalStorage, useEventListener } from "@vueuse/core";
-import { VueFlow, useVueFlow } from "@vue-flow/core";
+import { SelectionMode, VueFlow, useVueFlow, type GraphNode } from "@vue-flow/core";
 import { Background } from "@vue-flow/background";
-import { Controls } from "@vue-flow/controls";
+import { MiniMap } from "@vue-flow/minimap";
 import "@vue-flow/core/dist/style.css";
 import "@vue-flow/core/dist/theme-default.css";
-import "@vue-flow/controls/dist/style.css";
+import "@vue-flow/minimap/dist/style.css";
 //子node组件
 import scriptNode from "./node/script.vue";
 import scriptPlan from "./node/scriptPlan.vue";
@@ -114,21 +132,24 @@ import assets from "./node/assets.vue";
 import storyboardTable from "./node/storyboardTable.vue";
 import storyboard from "./node/storyboard.vue";
 import workbench from "./node/workbench.vue";
-import poster from "./node/poster.vue";
 import rightChatBox from "./components/rightChatBox/index.vue";
 import { useLayout } from "./utils/dagre";
 import { useFlowBuilder } from "./utils/flowBuilder";
 import axios from "@/utils/axios";
 import projectStore from "@/stores/project";
 
+const router = useRouter();
 const { project } = storeToRefs(projectStore());
 import settingStore from "@/stores/setting";
-const { canvasWheelEvent, otherSetting } = storeToRefs(settingStore());
+const { otherSetting } = storeToRefs(settingStore());
 const openShowVisible = ref(true);
 const {
   toObject,
   fromObject,
   fitView,
+  zoomIn,
+  zoomOut,
+  viewport,
   findNode,
   onNodeDragStart,
   onNodeDragStop,
@@ -136,39 +157,64 @@ const {
   onMoveEnd,
   updateNodeInternals,
   getNodes,
-  getViewport,
-  setViewport,
 } = useVueFlow({ id: "mainFlowBox" });
 
-// 按住空格+左键拖拽画布（即使在节点上）
-const isSpacePressed = ref(false);
-let dragOrigin = { x: 0, y: 0, vx: 0, vy: 0 };
-
-function onSpaceMouseDown(e: MouseEvent) {
-  if (!isSpacePressed.value || e.button !== 0) return;
-  e.stopPropagation();
-  e.preventDefault();
-  const vp = getViewport();
-  dragOrigin = { x: e.clientX, y: e.clientY, vx: vp.x, vy: vp.y };
-  document.addEventListener("mousemove", onSpaceMouseMove);
-  document.addEventListener("mouseup", onSpaceMouseUp, { once: true });
-}
-function onSpaceMouseMove(e: MouseEvent) {
-  setViewport({ x: dragOrigin.vx + e.clientX - dragOrigin.x, y: dragOrigin.vy + e.clientY - dragOrigin.y, zoom: getViewport().zoom });
-}
-function onSpaceMouseUp() {
-  document.removeEventListener("mousemove", onSpaceMouseMove);
-}
-
-useEventListener(document, "keydown", (e: KeyboardEvent) => {
-  if (e.code === "Space" && !e.repeat) {
-    e.preventDefault();
-    isSpacePressed.value = true;
+// ─── 画板交互（对齐资产画布）──────────────────────────────
+// H 抓手（默认）：左键拖动画布；V 移动 / 框选：拖空白处框选。
+// 和资产画布默认框选不同——生产页就 6 个固定节点，没有多选场景，平移才是常用动作。
+// 任何时候按住空格或中键也能拖动画布（空格由 vue-flow 的 pan-activation-key-code 接管）。
+type Tool = "select" | "pan";
+const TOOL_KEY = "toonflow.production.tool";
+const MULTI_SELECT_KEYS = ["Shift", "Meta", "Control"];
+const ZOOM_DURATION = 200;
+const readTool = (): Tool => {
+  try {
+    return localStorage.getItem(TOOL_KEY) === "select" ? "select" : "pan";
+  } catch {
+    return "pan";
   }
-});
-useEventListener(document, "keyup", (e: KeyboardEvent) => {
-  if (e.code === "Space") isSpacePressed.value = false;
-});
+};
+const tool = ref<Tool>(readTool());
+function setTool(next: Tool) {
+  tool.value = next;
+  try {
+    localStorage.setItem(TOOL_KEY, next);
+  } catch {
+    // 无痕模式等拿不到存储时只在本次生效
+  }
+}
+const spaceHeld = ref(false);
+/** 按住空格时临时切到抓手，松开恢复 */
+const activeTool = computed<Tool>(() => (spaceHeld.value ? "pan" : tool.value));
+
+// 生产页的节点里全是 Markdown 编辑器和输入框，快捷键必须让开输入态
+function isTyping(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  return (
+    !!el &&
+    (el.isContentEditable ||
+      /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) ||
+      !!el.closest?.(".t-dialog, .t-drawer, .t-popup, .cm-editor, .monaco-editor, .CodeMirror"))
+  );
+}
+useEventListener(
+  window,
+  "keydown",
+  (e: KeyboardEvent) => {
+    if (e.defaultPrevented || e.isComposing || isTyping(e.target)) return;
+    if (e.code === "Space" && !e.repeat) {
+      e.preventDefault(); // 不让空格触发按钮或滚动页面
+      spaceHeld.value = true;
+      return;
+    }
+    if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+    if (e.key.toLowerCase() === "v") setTool("select");
+    else if (e.key.toLowerCase() === "h") setTool("pan");
+  },
+  true,
+);
+useEventListener(window, "keyup", (e: KeyboardEvent) => e.code === "Space" && (spaceHeld.value = false), true);
+useEventListener(window, "blur", () => (spaceHeld.value = false));
 
 // 拖拽/平移期间降低渲染复杂度，优化性能
 const isInteracting = ref(false);
@@ -193,9 +239,23 @@ const { layout } = useLayout("mainFlowBox");
 
 import productionAgentStore from "@/stores/productionAgent";
 const { episodesId, flowData, status } = storeToRefs(productionAgentStore());
+// 抽屉宽度可拖，工具栏得贴着它的左边缘；抽屉自己还有 5px 的 margin-right
+const chatWidth = ref(400);
+const chatOpen = computed(() => openShowVisible.value && !!episodesId.value);
+const railRight = computed(() => (chatOpen.value ? chatWidth.value + 13 : 16));
 provide("episodesId", episodesId);
 
 const loading = ref(false);
+
+const NODE_COLORS: Record<string, string> = {
+  script: "var(--td-brand-color)",
+  scriptPlan: "var(--td-brand-color)",
+  assets: "var(--td-success-color)",
+  storyboardTable: "var(--td-warning-color)",
+  storyboard: "var(--td-warning-color)",
+  workbench: "#8b5cf6",
+};
+const miniNodeColor = (node: GraphNode) => NODE_COLORS[node.id] ?? "var(--td-brand-color)";
 
 // 节点位置
 const nodePositions = ref<Record<string, { x: number; y: number }>>({
@@ -472,19 +532,19 @@ const steps = [
     element: ".guide-refresh-btn",
     title: $t("workbench.production.guideRefresh"),
     body: $t("workbench.production.guideRefreshBody"),
-    placement: "bottom",
+    placement: "left",
   },
   {
     element: ".guide-layout-btn",
     title: $t("workbench.production.guideLayoutBtn"),
     body: $t("workbench.production.guideLayoutBtnBody"),
-    placement: "bottom",
+    placement: "left",
   },
   {
-    element: ".vue-flow__controls",
+    element: ".dock",
     title: $t("workbench.production.guideCanvasNav"),
     body: $t("workbench.production.guideCanvasNavBody"),
-    placement: "right",
+    placement: "top",
   },
 ] as any;
 
@@ -512,59 +572,190 @@ watch(openShowVisible, (val) => {
 });
 </script>
 <style lang="scss" scoped>
-.flowMain {
+.production-page {
+  --canvas-bg: #f4f5f7;
+  --canvas-dot: rgba(15, 23, 42, 0.16);
+  --canvas-mask: rgba(244, 245, 247, 0.72);
+  --glass: color-mix(in srgb, var(--td-bg-color-container) 86%, transparent);
+  --select-blue: #0d99ff;
+  position: relative;
+  width: 100%;
   height: 100%;
-  &.space-dragging {
-    cursor: grab !important;
-    :deep(*) {
-      cursor: grab !important;
-    }
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+html[theme-mode="dark"] .production-page {
+  --canvas-bg: #0d0f14;
+  --canvas-dot: rgba(255, 255, 255, 0.09);
+  --canvas-mask: rgba(13, 15, 20, 0.72);
+}
+.flow {
+  width: 100%;
+  height: 100%;
+}
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--td-component-stroke);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+.topbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 96px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  z-index: 10;
+  > * {
+    pointer-events: auto;
   }
-  .floatingWindow {
-    width: 100%;
-    height: 100%;
-    position: relative;
+}
+.glass-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--td-component-stroke);
+  background: var(--glass);
+  color: var(--td-text-color-primary);
+  cursor: pointer;
+  &:hover {
+    border-color: var(--td-brand-color);
+  }
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 6px 0 14px;
+  border-radius: 12px;
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--td-text-color-placeholder);
+  }
+  strong {
+    font-size: 15px;
+    max-width: 260px;
     overflow: hidden;
-    .episodesSelect {
-      position: absolute;
-      top: 10px;
-      left: 0px;
-      z-index: 9999;
-      cursor: pointer;
-
-      .item {
-        width: 50px;
-        padding: 5px;
-        color: var(--mainColor);
-        &:hover {
-          background-color: var(--td-bg-color-container-hover);
-          border-radius: 4px;
-          cursor: pointer;
-        }
-      }
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .episode {
+    width: 180px;
+  }
+}
+.rail {
+  position: absolute;
+  top: 50%;
+  // right 由 railRight 内联给出（跟着抽屉宽度走）
+  transform: translateY(-50%);
+  z-index: 10000;
+  transition: right 0.3s ease-out;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 18px;
+  z-index: 10;
+  button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--td-text-color-secondary);
+    cursor: pointer;
+    transition:
+      background-color 150ms,
+      color 150ms,
+      transform 150ms;
+    &:hover {
+      background: var(--td-bg-color-container-hover);
+      color: var(--td-text-color-primary);
     }
-    .openRightChatBoxBtn {
-      position: absolute;
-      top: 10px;
-      right: 0;
-      width: 40px;
-      height: 40px;
-      background-color: var(--td-bg-color-secondarycontainer);
-      border-radius: 10px;
-      z-index: 10;
-      cursor: pointer;
+    &:active {
+      transform: scale(0.94);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--td-brand-color-focus);
     }
   }
-  :deep(.slide-enter-active),
-  :deep(.slide-leave-active) {
-    transition: transform 0.3s ease-out;
+  .railLoading {
+    color: var(--td-brand-color);
   }
-  :deep(.slide-enter-from) {
-    transform: translateX(100%);
+}
+.rule {
+  width: 22px;
+  height: 1px;
+  background: var(--td-component-stroke);
+  &.v {
+    width: 1px;
+    height: 18px;
   }
-  :deep(.slide-leave-to) {
-    transform: translateX(100%);
+}
+.dock {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  z-index: 10;
+  button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--td-text-color-secondary);
+    cursor: pointer;
+    &.active {
+      background: var(--td-brand-color);
+      color: #fff;
+    }
+    &:hover:not(.active) {
+      background: var(--td-bg-color-container-hover);
+    }
   }
+  .zoom {
+    min-width: 44px;
+    text-align: center;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+// 小地图挪到左下角 dock 上方：右下角整列被 AI 助手抽屉占着
+.production-page .minimap {
+  left: 16px;
+  right: auto;
+  bottom: 62px;
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--td-component-stroke);
+  background: var(--glass);
+}
+:deep(.slide-enter-active),
+:deep(.slide-leave-active) {
+  transition: transform 0.3s ease-out;
+}
+:deep(.slide-enter-from) {
+  transform: translateX(100%);
+}
+:deep(.slide-leave-to) {
+  transform: translateX(100%);
 }
 // 拖拽/平移时优化渲染性能
 .flowMain.is-interacting {
@@ -610,9 +801,42 @@ $handelSize: 12px;
 .fps {
   position: absolute;
   bottom: 10px;
-  right: 0px;
+  right: 10px;
   padding: 2px 6px;
   font-size: 12px;
   border-radius: 4px;
+  z-index: 10;
+}
+:deep(.vue-flow__edge-path) {
+  stroke: var(--td-brand-color);
+  stroke-width: 1.6;
+}
+:deep(.vue-flow__node) {
+  border-radius: 14px;
+}
+// 光标：移动工具下空白处是箭头，抓手工具 / 按住空格时是手
+.tool-select :deep(.vue-flow__pane) {
+  cursor: default;
+}
+.tool-pan :deep(.vue-flow__pane),
+.space-pan :deep(.vue-flow__pane),
+.space-pan :deep(.vue-flow__node) {
+  cursor: grab;
+}
+.tool-pan :deep(.vue-flow__pane.dragging),
+.space-pan :deep(.vue-flow__pane.dragging) {
+  cursor: grabbing;
+}
+// 框选框与多选包围框（Figma 蓝）
+:deep(.vue-flow__selection) {
+  border: 1px solid var(--select-blue);
+  background: color-mix(in srgb, var(--select-blue) 8%, transparent);
+  border-radius: 0;
+}
+:deep(.vue-flow__nodesselection-rect) {
+  border: 1px solid var(--select-blue);
+  background: transparent;
+  border-radius: 4px;
+  cursor: move;
 }
 </style>

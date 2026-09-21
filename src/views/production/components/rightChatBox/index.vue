@@ -162,7 +162,8 @@ function handleClearMemory(type: "message" | "summary" | "all") {
 }
 
 const resizeHandleRef = ref<HTMLElement | null>(null);
-const boxWidth = ref(400);
+// 宽度交给父级：画板右侧工具栏要贴着抽屉左边缘摆，拖宽抽屉时它得跟着挪
+const boxWidth = defineModel<number>("width", { default: 400 });
 const MIN_WIDTH = 400;
 const { pressed } = useMousePressed({ target: resizeHandleRef });
 const { x } = useMouse();

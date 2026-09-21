@@ -1153,6 +1153,19 @@
     d3-selection "^3.0.0"
     d3-zoom "^3.0.0"
 
+"@vue-flow/minimap@^1.5.0":
+  version "1.5.4"
+  resolved "https://registry.npmmirror.com/@vue-flow/minimap/-/minimap-1.5.4.tgz#c9c3badea49d4166aa9cdc713017397d9df7574c"
+  integrity sha512-l4C+XTAXnRxsRpUdN7cAVFBennC1sVRzq4bDSpVK+ag7tdMczAnhFYGgbLkUw3v3sY6gokyWwMl8CDonp8eB2g==
+  dependencies:
+    d3-selection "^3.0.0"
+    d3-zoom "^3.0.0"
+
+"@vue-flow/node-toolbar@^1.1.0":
+  version "1.1.1"
+  resolved "https://registry.npmmirror.com/@vue-flow/node-toolbar/-/node-toolbar-1.1.1.tgz#fc24f09c82de49d76e6045c2536a1c3f47d1b42c"
+  integrity sha512-vgSnGMLd3FXstdpvC721qcBDzGkPsudmyA8urEP55/EMikCp59klgzPvVULTDxxsew5MdXtTBCumsqOi+PXJdg==
+
 "@vue/compiler-core@3.5.30":
   version "3.5.30"
   resolved "https://registry.npmmirror.com/@vue/compiler-core/-/compiler-core-3.5.30.tgz#0f984da9207f24f9ddfb700052a43247a953fd9a"

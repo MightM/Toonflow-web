@@ -9,7 +9,7 @@
         class="addBtn"
         @click="
           editProjectData = null;
-          dialogShow = true;
+          modeShow = true;
         ">
         <template #icon><i-plus class="addIcon" :size="20" /></template>
         {{ $t("workbench.project.newProject") }}
@@ -22,8 +22,8 @@
             {{ project.name }}
           </div>
           <div>
-            <t-tag shape="round">
-              {{ project.projectType == "novel" ? $t(`workbench.project.type.novel`) : $t(`workbench.project.type.script`) }}
+            <t-tag shape="round" :theme="project.projectType === 'canvas' ? 'primary' : 'default'" variant="light">
+              {{ typeLabel(project.projectType) }}
             </t-tag>
           </div>
         </div>
@@ -47,11 +47,13 @@
       </t-card>
     </div>
   </div>
-  <projectDialog v-model="dialogShow" :projectData="editProjectData" @add="addProjectFn" @edit="editProjectFn" />
+  <ProjectModeDialog v-model="modeShow" @pick="pickMode" />
+  <projectDialog v-model="dialogShow" :projectData="editProjectData" :mode="newMode" @add="addProjectFn" @edit="editProjectFn" />
 </template>
 
 <script setup lang="ts">
 import projectDialog from "./components/projectDialog.vue";
+import ProjectModeDialog, { type ProjectMode } from "./components/ProjectModeDialog.vue";
 import dayjs from "dayjs";
 import axios from "@/utils/axios";
 import projectStore from "@/stores/project";
@@ -61,6 +63,20 @@ const { clearProjectCache } = imageListCacheStore();
 const { allProject, project } = storeToRefs(projectStore());
 
 const dialogShow = ref(false);
+// 新建项目：先选模式（无限画布 / 短剧流水线），再填表单
+const modeShow = ref(false);
+const newMode = ref<ProjectMode>("pipeline");
+function pickMode(mode: ProjectMode) {
+  newMode.value = mode;
+  editProjectData.value = null;
+  dialogShow.value = true;
+}
+// 卡片标签：无限画布 / 短剧流水线 · 基于小说原文 / 基于剧本
+function typeLabel(projectType: string | null | undefined) {
+  if (projectType === "canvas") return $t("workbench.project.type.canvas");
+  const sub = projectType === "novel" ? $t("workbench.project.type.novel") : $t("workbench.project.type.script");
+  return `${$t("workbench.project.type.pipeline")} · ${sub}`;
+}
 const editProjectData = ref<{
   id: string;
   name: string;
@@ -116,8 +132,9 @@ async function openProject(projectId: string | undefined) {
   }
 
   project.value = item;
-  if (item.projectType === "novel") router.push(`/novel`);
-  else if (item.projectType === "script") router.push(`/script`);
+  // canvas 进无限画布；novel 进小说原文；其它值（含老数据）一律按剧本项目兜底，避免「点了没反应」
+  if (item.projectType === "canvas") return router.push("/freeCanvas");
+  router.push(item.projectType === "novel" ? `/novel` : `/script`);
 }
 
 function openEdit(item: {

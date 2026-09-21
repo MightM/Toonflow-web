@@ -1,9 +1,20 @@
 <template>
-  <t-card class="workbench" @click="visible = !visible">
+  <t-card class="workbench">
     <div class="titleBar dragHandle pr">
       <div class="title">{{ $t("workbench.production.node.workbench.title") }}</div>
       <Handle :id="props.handleIds.target" type="target" :position="Position.Left" style="left: calc(-1 * var(--td-comp-paddingLR-xl))" />
       <!-- <Handle :id="props.handleIds.source" type="source" :position="Position.Right" /> -->
+    </div>
+    <div class="entries" @click.stop>
+      <t-button size="small" theme="primary" block @click="openShots">
+        <template #icon><i-carousel-video size="14" /></template>
+        镜头台（逐镜出图 / 出视频）
+      </t-button>
+      <t-button size="small" variant="outline" block @click="openEditor">
+        <template #icon><i-film size="14" /></template>
+        剪辑台（新标签页）
+      </t-button>
+      <t-button size="small" variant="text" block @click="visible = true">快速预览 / 分镜台</t-button>
     </div>
     <div class="videoPreview">
       <div class="videoPlaceholder" :style="{ background: workbenchData?.gradient }">
@@ -29,9 +40,21 @@
 
 <script setup lang="ts">
 import workbench from "../components/workbench/index.vue";
+import type { Ref } from "vue";
 import { Handle, Position } from "@vue-flow/core";
 
 const visible = ref(false);
+
+const router = useRouter();
+const episodesId = inject<Ref<number | undefined>>("episodesId");
+// 视频环节已经搬到镜头台；这个节点只留入口，快速预览与老分镜台仍在弹窗里
+function openShots() {
+  void router.push({ path: "/shots", query: { scriptId: String(episodesId?.value ?? "") } });
+}
+function openEditor() {
+  const query = new URLSearchParams({ scriptId: String(episodesId?.value ?? "") });
+  window.open(`${location.origin}${location.pathname}#/editor?${query}`, "_blank");
+}
 
 interface WorkbenchData {
   name: string;
@@ -54,6 +77,12 @@ const workbenchData = defineModel<WorkbenchData>({ required: true });
 </script>
 
 <style lang="scss" scoped>
+.entries {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px 0;
+}
 .workbench {
   cursor: pointer;
   min-width: 280px;

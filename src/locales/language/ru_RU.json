@@ -34,7 +34,8 @@
       "type": {
         "image": "Изображение",
         "text": "Текст",
-        "video": "Видео"
+        "video": "Видео",
+        "tts": "Speech"
       },
       "msg": {
         "fetchModelFailed": "Не удалось получить данные модели:"
@@ -427,7 +428,8 @@
       "assetCenter": "Центр ассетов",
       "settings": "Настройки",
       "jumpGithub": "Перейти на Гитхаб",
-      "feedbackQuestions": "Вопрос обратной связи"
+      "feedbackQuestions": "Вопрос обратной связи",
+      "freeCanvas": "Canvas"
     },
     "project": {
       "title": "Мои проекты",
@@ -489,7 +491,13 @@
         "directorManualName": "Название руководства режиссера",
         "directorManualNamePh": "Введите название руководства режиссера",
         "directorFile": "Документ «Руководство директора»",
-        "directorManualCover": "Обложка руководства режиссера"
+        "directorManualCover": "Обложка руководства режиссера",
+        "artStyleOptional": "Visual manual (optional)",
+        "noArtStyle": "No art style",
+        "canvasHint": "Infinite Canvas: one free canvas where text / image / audio / video nodes link and generate each other, for polishing every clip. Use the Drama Pipeline for batch output.",
+        "pipelineHint": "Drama Pipeline: novel / script → assets → storyboard → video, generated in batch with AI. Use the Infinite Canvas to organise ideas freely and refine clip by clip.",
+        "projectIntro": "Project intro",
+        "projectIntroPh": "A few lines about this project (optional)"
       },
       "msg": {
         "fetchFailed": "Не удалось получить список проектов",
@@ -537,7 +545,29 @@
       },
       "type": {
         "novel": "По мотивам оригинального романа",
-        "script": "По новому сценарию"
+        "script": "По новому сценарию",
+        "canvas": "Infinite Canvas",
+        "pipeline": "Drama Pipeline"
+      },
+      "mode": {
+        "title": "Choose a project mode",
+        "subtitle": "The two modes keep separate data and cannot be switched after creation",
+        "canvas": {
+          "title": "Infinite Canvas",
+          "tagline": "Flexible and free, for videos you want to craft in detail",
+          "p1": "Add text, image, audio and video nodes and link them as references",
+          "p2": "Text→image, text→video, image→video, multi-image→video, text→speech",
+          "p3": "No episodes or pipeline steps; polish every clip one by one",
+          "fit": "Best for: music videos, ads, idea experiments, single polished clips"
+        },
+        "pipeline": {
+          "title": "Drama Pipeline",
+          "tagline": "Let AI parse the script, generate episodes and stitch shots in batch",
+          "p1": "Novel / script → assets → storyboard → video in one line",
+          "p2": "Script and production agents break down episodes, assets and shots",
+          "p3": "Shot desk renders shot by shot, editor stitches episodes",
+          "fit": "Best for: multi-episode dramas, comic dramas, series"
+        }
       }
     },
     "novel": {

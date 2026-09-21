@@ -59,7 +59,7 @@ const selectValueLabel = defineModel("label");
 
 const props = defineProps({
   type: {
-    type: String as () => "text" | "image" | "all" | "video",
+    type: String as () => "text" | "image" | "all" | "video" | "tts",
     default: "all",
   },
   size: {
@@ -104,6 +104,7 @@ const titleMap = {
   image: $t("components.modelSelect.type.image"),
   text: $t("components.modelSelect.type.text"),
   video: $t("components.modelSelect.type.video"),
+  tts: $t("components.modelSelect.type.tts"),
 };
 //获取模型选择API数据
 function handleModelChange() {
@@ -125,7 +126,7 @@ function handleModelChange() {
           label: item.label,
           value: item.value,
           vendorId: item.vendorId,
-          type: titleMap[item.type as "image" | "text" | "video"],
+          type: titleMap[item.type as "image" | "text" | "video" | "tts"],
         });
       });
       optionsData.value = Array.from(groupMap.values());

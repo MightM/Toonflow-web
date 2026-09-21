@@ -25,7 +25,7 @@
         </div>
       </t-tooltip>
       <t-tooltip :content="$t('workbench.production.wb.videoEditing')" placement="bottom" theme="light" destroyOnClose :showArrow="false">
-        <div class="item fc c" :class="{ active: activeMenu === 'editVideo' }" @click="changeMenu('editVideo')">
+        <div class="item fc c" @click="openEditor">
           <i-editing class="icon" />
         </div>
       </t-tooltip>
@@ -33,16 +33,7 @@
     <div class="content">
       <preview v-if="activeMenu === 'preview'" />
       <generate v-if="activeMenu === 'generate'" @importVideo="handleBatchDownload" v-model="extractLines" />
-      <editVideo
-        v-if="activeMenu === 'editVideo'"
-        :initial-tracks="mockTracks"
-        :initial-video-items="initialVideoItems"
-        :initial-media-items="mockMediaItems"
-        :initial-audio-items="mockAudioItems"
-        :initial-image-items="mockImageItems"
-        :canvas-width="canvasWidth"
-        :canvas-height="canvasHeight"
-        ref="editVideoRef" />
+
     </div>
     <div v-if="importLoading" class="importLoadingMask">
       <div class="importLoadingContent">
@@ -57,9 +48,8 @@ import type { Ref } from "vue";
 import axios from "@/utils/axios";
 import preview from "./preview.vue";
 import generate from "./generate/index.vue";
-import editVideo from "./editVideo/index.vue";
 import { generateId, type Track } from "vue-clip-track";
-import type { MediaItem, AudioItem } from "./editVideo/utils/mediaData";
+import type { MediaItem, AudioItem } from "@/views/editor/editVideo/utils/mediaData";
 import projectStore from "@/stores/project";
 const { project } = storeToRefs(projectStore());
 
@@ -126,7 +116,11 @@ function getMediaType(src?: string): MediaType {
 //切换菜单
 function changeMenu(type: string) {
   activeMenu.value = type;
-  if (type == "editVideo") editFootage();
+}
+// 剪辑台已独立成页：新开标签页，一边生成一边剪
+function openEditor() {
+  const query = new URLSearchParams({ scriptId: String(episodesId.value ?? "") });
+  window.open(`${location.origin}${location.pathname}#/editor?${query}`, "_blank");
 }
 const episodesId = inject<Ref<number>>("episodesId")!;
 //查询剪辑素材

@@ -10,10 +10,14 @@
       @cancel="handleCancel"
       :confirm-btn="isEdit ? $t('workbench.project.dialog.save') : $t('workbench.project.dialog.ok')"
       :cancel-btn="$t('workbench.project.dialog.cancel')">
+      <div class="modeHint" :class="{ canvas: isCanvas }">
+        <component :is="isCanvas ? 'i-mind-mapping' : 'i-carousel-video'" size="16" />
+        <span>{{ $t(isCanvas ? "workbench.project.dialog.canvasHint" : "workbench.project.dialog.pipelineHint") }}</span>
+      </div>
       <div class="formColumns">
         <div class="formLeft">
           <t-form :data="formState" label-align="top">
-            <t-form-item :label="$t('workbench.project.dialog.projectType')">
+            <t-form-item v-if="!isCanvas" :label="$t('workbench.project.dialog.projectType')">
               <t-select v-model="formState.projectType" :placeholder="$t('workbench.project.dialog.selectType')">
                 <t-option key="基于小说原文" :label="$t('workbench.project.dialog.basedOnNovel')" value="novel" />
                 <t-option key="基于剧本" :label="$t('workbench.project.dialog.basedOnScript')" value="script" />
@@ -22,7 +26,7 @@
             <t-form-item :label="$t('workbench.project.dialog.projectName')">
               <t-input v-model="formState.name" :placeholder="$t('workbench.project.dialog.projectNamePh')" />
             </t-form-item>
-            <t-form-item :label="$t('workbench.project.dialog.novelType')">
+            <t-form-item v-if="!isCanvas" :label="$t('workbench.project.dialog.novelType')">
               <t-input v-model="formState.type" :placeholder="$t('workbench.project.dialog.novelTypePh')" />
             </t-form-item>
             <t-form-item :label="$t('workbench.project.dialog.modelData')">
@@ -38,7 +42,7 @@
             <t-form-item :label="$t('workbench.project.dialog.videoModelData')">
               <div class="ac" style="gap: 5px; width: 100%">
                 <modelSelect v-model="formState.videoModel" type="video" @change="changeFn" :changeConfig="true" />
-                <t-select v-model="formState.mode" class="paramSelect ml-5" :placeholder="$t('workbench.production.editImage.mode')">
+                <t-select v-if="!isCanvas" v-model="formState.mode" class="paramSelect ml-5" :placeholder="$t('workbench.production.editImage.mode')">
                   <t-option v-for="value in mode" :key="value.value" :value="value.value" :label="value.label" />
                 </t-select>
               </div>
@@ -46,11 +50,11 @@
             <t-form-item :label="$t('workbench.project.dialog.videoRatio')">
               <t-select v-model="formState.videoRatio" :options="RATIO_OPTIONS" />
             </t-form-item>
-            <t-form-item :label="$t('workbench.project.dialog.novelIntro')">
+            <t-form-item :label="$t(isCanvas ? 'workbench.project.dialog.projectIntro' : 'workbench.project.dialog.novelIntro')">
               <t-textarea
                 v-model="formState.intro"
                 :autosize="{ minRows: 3, maxRows: 6 }"
-                :placeholder="$t('workbench.project.dialog.novelIntroPh')" />
+                :placeholder="$t(isCanvas ? 'workbench.project.dialog.projectIntroPh' : 'workbench.project.dialog.novelIntroPh')" />
             </t-form-item>
           </t-form>
         </div>
@@ -59,7 +63,7 @@
             <t-form-item>
               <div class="artStylePicker">
                 <div class="artStyleHeader">
-                  <span>{{ $t("workbench.project.dialog.visualManual") }}</span>
+                  <span>{{ $t(isCanvas ? "workbench.project.dialog.artStyleOptional" : "workbench.project.dialog.visualManual") }}</span>
                   <t-button size="small" variant="outline" @click="openVisualManualDialog()">
                     <template #icon><i-plus size="14" /></template>
                     {{ $t("workbench.project.dialog.newVisualManual") }}
@@ -68,6 +72,12 @@
                 <div class="artStyleContent">
                   <t-loading :loading="visualManualLoading" :text="$t('workbench.project.dialog.loading')">
                     <div class="gridContainer">
+                      <div v-if="isCanvas" class="gridItem noneItem" :class="{ active: !formState.artStyle }" @click="formState.artStyle = ''">
+                        <div class="imageWrapper none">
+                          <i-forbid size="22" />
+                          <div class="text">{{ $t("workbench.project.dialog.noArtStyle") }}</div>
+                        </div>
+                      </div>
                       <div
                         v-for="(item, index) in visualManualOptions"
                         :key="index"
@@ -93,7 +103,7 @@
                 </div>
               </div>
             </t-form-item>
-            <t-form-item>
+            <t-form-item v-if="!isCanvas">
               <div class="directorManual">
                 <div class="directorManualHeader">
                   <span>{{ $t("workbench.project.dialog.directorManual") }}</span>
@@ -294,6 +304,8 @@ import { DialogPlugin } from "tdesign-vue-next";
 const addProjectShow = defineModel<boolean>();
 const props = defineProps<{
   projectData?: ProjectData | null;
+  /** 新建时由模式弹窗决定；编辑时按项目自身的 projectType 判断 */
+  mode?: "canvas" | "pipeline";
 }>();
 const emit = defineEmits<{
   (e: "add", data: ProjectFormData): void;
@@ -381,6 +393,8 @@ const DEFAULT_TAB_DATA: () => Data[] = () => [
 ];
 
 const isEdit = computed(() => !!props.projectData);
+// 无限画布项目：不需要小说类型 / 导演手册 / 视频 mode，画风可选
+const isCanvas = computed(() => (isEdit.value ? props.projectData?.projectType === "canvas" : props.mode === "canvas"));
 
 // ===== 常量 =====
 const RATIO_OPTIONS = [
@@ -419,16 +433,17 @@ function handleCancel() {
 }
 
 function handleOk() {
-  if (!formState.value.name) return window.$message.warning($t("workbench.project.msg.enterProjectName"));
-  if (!formState.value.type) return window.$message.warning($t("workbench.project.msg.enterProjectType"));
-  if (!formState.value.imageModel) return window.$message.warning($t("workbench.project.msg.enterImageModel"));
-  if (!formState.value.videoModel) return window.$message.warning($t("workbench.project.msg.enterVideoModel"));
-  if (!formState.value.artStyle) return window.$message.warning($t("workbench.project.msg.enterArtStyle"));
-  if (!formState.value.directorManual) return window.$message.warning($t("workbench.project.msg.directorManual"));
-  if (!formState.value.videoRatio) return window.$message.warning($t("workbench.project.msg.enterVideoRatio"));
-  if (!formState.value.intro) return window.$message.warning($t("workbench.project.msg.enterProjectIntro"));
-  if (!formState.value.imageQuality) return window.$message.warning($t("workbench.project.msg.enterProjectQuality"));
-  if (!formState.value.mode) return window.$message.warning($t("workbench.project.msg.selectMode"));
+  const f = formState.value;
+  if (!f.name) return window.$message.warning($t("workbench.project.msg.enterProjectName"));
+  if (!isCanvas.value && !f.type) return window.$message.warning($t("workbench.project.msg.enterProjectType"));
+  if (!f.imageModel) return window.$message.warning($t("workbench.project.msg.enterImageModel"));
+  if (!f.videoModel) return window.$message.warning($t("workbench.project.msg.enterVideoModel"));
+  if (!isCanvas.value && !f.artStyle) return window.$message.warning($t("workbench.project.msg.enterArtStyle"));
+  if (!isCanvas.value && !f.directorManual) return window.$message.warning($t("workbench.project.msg.directorManual"));
+  if (!f.videoRatio) return window.$message.warning($t("workbench.project.msg.enterVideoRatio"));
+  if (!isCanvas.value && !f.intro) return window.$message.warning($t("workbench.project.msg.enterProjectIntro"));
+  if (!f.imageQuality) return window.$message.warning($t("workbench.project.msg.enterProjectQuality"));
+  if (!isCanvas.value && !f.mode) return window.$message.warning($t("workbench.project.msg.selectMode"));
   if (isEdit.value) {
     emit("edit", {
       id: formState.value.id as unknown as string,
@@ -439,14 +454,14 @@ function handleOk() {
       videoRatio: formState.value.videoRatio,
       imageModel: formState.value.imageModel,
       videoModel: formState.value.videoModel,
-      projectType: formState.value.projectType || "novel",
+      projectType: isCanvas.value ? "canvas" : formState.value.projectType || "novel",
       directorManual: formState.value.directorManual,
       imageQuality: formState.value.imageQuality,
       mode: formState.value.mode,
     });
   } else {
     emit("add", {
-      projectType: formState.value.projectType || "novel",
+      projectType: isCanvas.value ? "canvas" : formState.value.projectType || "novel",
       name: formState.value.name,
       intro: formState.value.intro,
       type: formState.value.type,
@@ -515,9 +530,10 @@ watch(addProjectShow, async (visible) => {
       }
     } else {
       resetForm();
+      if (isCanvas.value) formState.value = { ...formState.value, projectType: "canvas", imageQuality: "1K" };
     }
     fetchVisualManuals();
-    queryDirectorManual();
+    if (!isCanvas.value) queryDirectorManual();
   }
 });
 
@@ -851,6 +867,33 @@ function handleDirectorManualCoverFileChange(e: Event) {
 </script>
 
 <style lang="scss" scoped>
+.modeHint {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+  padding: 10px 14px;
+  border-left: 4px solid var(--td-warning-color);
+  border-radius: 8px;
+  background: var(--td-warning-color-light);
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--td-text-color-primary);
+  &.canvas {
+    border-left-color: var(--td-brand-color);
+    background: var(--td-brand-color-light);
+  }
+}
+.gridItem.noneItem .imageWrapper.none {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--td-text-color-secondary);
+  background: var(--td-bg-color-secondarycontainer);
+}
 .formColumns {
   display: flex;
   gap: 24px;

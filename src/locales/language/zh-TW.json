@@ -34,7 +34,8 @@
       "type": {
         "image": "圖片",
         "text": "文字",
-        "video": "影片"
+        "video": "影片",
+        "tts": "Speech"
       },
       "msg": {
         "fetchModelFailed": "取得模型資料失敗:"
@@ -429,9 +430,12 @@
       "cornerScape": "塑造角色與場景",
       "production": "影片製作",
       "assetCenter": "資產中心",
+      "assetCanvas": "資產畫布",
+      "assetBoard": "資產",
       "settings": "設定",
       "jumpGithub": "跳轉Github",
-      "feedbackQuestions": "回饋問題"
+      "feedbackQuestions": "回饋問題",
+      "freeCanvas": "Canvas"
     },
     "project": {
       "title": "我的專案",
@@ -492,7 +496,13 @@
         "directorManualPrompt": "導演手冊提示詞",
         "directorManualName": "導演手冊名稱",
         "directorFile": "導演手冊文件",
-        "directorManualCover": "導演手冊封面"
+        "directorManualCover": "導演手冊封面",
+        "artStyleOptional": "Visual manual (optional)",
+        "noArtStyle": "No art style",
+        "canvasHint": "Infinite Canvas: one free canvas where text / image / audio / video nodes link and generate each other, for polishing every clip. Use the Drama Pipeline for batch output.",
+        "pipelineHint": "Drama Pipeline: novel / script → assets → storyboard → video, generated in batch with AI. Use the Infinite Canvas to organise ideas freely and refine clip by clip.",
+        "projectIntro": "Project intro",
+        "projectIntroPh": "A few lines about this project (optional)"
       },
       "msg": {
         "fetchFailed": "取得專案列表失敗",
@@ -541,7 +551,29 @@
       },
       "type": {
         "novel": "基於小說原文",
-        "script": "基於小說劇本"
+        "script": "基於小說劇本",
+        "canvas": "Infinite Canvas",
+        "pipeline": "Drama Pipeline"
+      },
+      "mode": {
+        "title": "Choose a project mode",
+        "subtitle": "The two modes keep separate data and cannot be switched after creation",
+        "canvas": {
+          "title": "Infinite Canvas",
+          "tagline": "Flexible and free, for videos you want to craft in detail",
+          "p1": "Add text, image, audio and video nodes and link them as references",
+          "p2": "Text→image, text→video, image→video, multi-image→video, text→speech",
+          "p3": "No episodes or pipeline steps; polish every clip one by one",
+          "fit": "Best for: music videos, ads, idea experiments, single polished clips"
+        },
+        "pipeline": {
+          "title": "Drama Pipeline",
+          "tagline": "Let AI parse the script, generate episodes and stitch shots in batch",
+          "p1": "Novel / script → assets → storyboard → video in one line",
+          "p2": "Script and production agents break down episodes, assets and shots",
+          "p3": "Shot desk renders shot by shot, editor stitches episodes",
+          "fit": "Best for: multi-episode dramas, comic dramas, series"
+        }
       }
     },
     "novel": {

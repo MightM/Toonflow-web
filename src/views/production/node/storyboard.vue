@@ -2,115 +2,57 @@
   <t-card class="storyboard">
     <div class="titleBar dragHandle pr">
       <div class="title">{{ $t("workbench.production.node.storyboard.title") }}</div>
+      <t-button class="toShots" size="small" theme="primary" @click.stop="openShots()">
+        <template #icon><i-carousel-video size="14" /></template>
+        镜头台
+      </t-button>
       <Handle :id="props.handleIds.target" type="target" :position="Position.Left" style="left: calc(-1 * var(--td-comp-paddingLR-xl))" />
       <Handle :id="props.handleIds.source" type="source" :position="Position.Right" style="right: calc(-1 * var(--td-comp-paddingLR-xl))" />
     </div>
+
     <div class="content">
-      <t-empty v-if="!storyboard.length" style="margin-top: 16px"></t-empty>
-      <t-checkbox-group v-model="selectedIds">
-        <div class="frameGrid">
-          <template v-for="(item, index) in storyboard" :key="item.id">
-            <div class="frameItem" @mouseenter="setHoveredFrame(index)" @mouseleave="setHoveredFrame(null)">
-              <div class="addBetween addBetween--left" :class="{ expanded: hoveredIndex === index }">
-                <t-button
-                  theme="primary"
-                  variant="outline"
-                  shape="circle"
-                  @click.stop="editStoryboaryImage(item, [index > 0 ? storyboard[index - 1]?.src || '' : '', item.src || ''], index - 1)">
-                  <template #icon><i-plus /></template>
-                </t-button>
-              </div>
-
-              <div class="frameCard">
-                <div
-                  class="frameImage"
-                  :style="{
-                    width: `${200 * gridScale}px`,
-                    height: `${200 * gridScale}px`,
-                  }">
-                  <div class="ac frameCheckbox" :style="{ transform: `scale(${styleMaxSize})` }">
-                    <t-checkbox :checked="selectedIds.includes(item.id!)" @click.stop :key="item?.id || index" :value="item.id" />
-                    <t-tag class="frameTypeTag" :style="{ backgroundColor: tagColors[index % tagColors.length] }">
-                      S{{ String(index + 1).padStart(2, "0") }}
-                    </t-tag>
-                  </div>
-
-                  <t-image
-                    v-if="item.src && item.state == '已完成'"
-                    :src="item.src"
-                    fit="contain"
-                    class="frameImg"
-                    @click="editStoryboaryImage(item, [item.src])">
-                    <template #overlayContent>
-                      <div class="imageToolsWrap show">
-                        <ImageTools :style="{ transform: `scale(${styleMaxSize})` }" :src="item.src" position="br" />
-                      </div>
-                    </template>
-                  </t-image>
-                  <div v-else class="generatingPlaceholder" @click="editStoryboaryImage(item, [])">
-                    <t-loading v-if="item.state === '生成中'" size="small" />
-                    <t-tooltip v-else-if="item.state == '生成失败'" :content="item?.reason">
-                      <span style="color: #ff4d4f">生成失败</span>
-                    </t-tooltip>
-                    <t-empty v-else size="small" :title="$t('workbench.production.node.storyboard.notGenerated')" />
-                  </div>
-                  <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.deleteNode')">
-                    <div class="remove ac" :style="{ transform: `scale(${styleMaxSize})` }" @click.stop="removeFn(item.id!)">
-                      <i-delete theme="outline" size="18" fill="#fff" />
-                    </div>
-                  </t-tooltip>
-                  <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.editNode')">
-                    <div class="editNode ac" :style="{ transform: `scale(${styleMaxSize})` }" @click.stop="editInfo(item)">
-                      <i-edit theme="outline" size="18" fill="#fff" />
-                    </div>
-                  </t-tooltip>
-                </div>
-              </div>
-              <div class="addBetween addBetween--right" :class="{ expanded: hoveredIndex === index }">
-                <t-button
-                  theme="primary"
-                  variant="outline"
-                  shape="circle"
-                  @click.stop="
-                    editStoryboaryImage(item, [item.src || '', index < (storyboard?.length ?? 0) - 1 ? storyboard[index + 1]?.src || '' : ''], index)
-                  ">
-                  <template #icon><i-plus /></template>
-                </t-button>
-              </div>
-            </div>
-          </template>
+      <t-empty v-if="!storyboard.length" style="margin-top: 16px" />
+      <template v-else>
+        <div class="progress">
+          <span class="num">{{ doneCount }} / {{ storyboard.length }}</span>
+          <span class="label">已出图</span>
+          <span v-if="failedCount" class="failed">{{ failedCount }} 失败</span>
+          <span v-if="pendingCount" class="pending">{{ pendingCount }} 生成中</span>
+          <div class="grow" />
+          <t-button size="small" variant="text" @click.stop="previewAll">
+            {{ $t("workbench.production.node.storyboard.gridPreview") }}
+          </t-button>
         </div>
-      </t-checkbox-group>
+        <div class="bar"><i :style="{ width: `${(doneCount / storyboard.length) * 100}%` }" /></div>
 
-      <div class="scaleControl">
-        <span>{{ $t("workbench.production.node.storyboard.scaleRatio") }}</span>
-        <t-input-number v-model="gridScale" :min="0.1" :max="3" :step="0.1" :decimal-places="1" size="small" style="width: 120px" />
-      </div>
-      <div class="ac" style="gap: 6px; margin-bottom: 6px; flex-wrap: wrap">
-        <t-tag theme="primary" variant="light">{{ $t("workbench.production.node.storyboard.selectedCount", { count: selectedIds.length }) }}</t-tag>
-        <t-button size="small" :disabled="!storyboard.length" theme="default" variant="outline" @click="selectedIds = []">
-          {{ $t("workbench.production.node.storyboard.clearSelection") }}
-        </t-button>
-        <t-button size="small" :disabled="!storyboard.length" theme="default" variant="outline" @click="selectAll">
-          {{ $t("workbench.production.node.storyboard.selectAll") }}
-        </t-button>
-        <t-button theme="danger" size="small" :disabled="!storyboard.length || !selectedIds.length" @click="handleDeleteSelected">批量删除</t-button>
-      </div>
-      <div class="ac" style="gap: 10px">
-        <t-button block @click="previewAll" :disabled="!storyboard.length">{{ $t("workbench.production.node.storyboard.gridPreview") }}</t-button>
-        <t-button block @click="batchGenerateImage" :disabled="!storyboard.length || !selectedIds.length" :loading="generateLoading">
-          {{ $t("workbench.production.node.storyboard.generateImage") }}
-        </t-button>
+        <!-- 缩略总览：点任意一格直接进镜头台并定位到那一镜 -->
+        <div class="thumbs">
+          <button
+            v-for="(item, index) in visibleShots"
+            :key="item.id"
+            class="thumb"
+            :class="{ failed: item.state === '生成失败' }"
+            :title="`镜头 ${index + 1}`"
+            @click.stop="openShots(item.id)">
+            <span class="no">{{ index + 1 }}</span>
+            <img v-if="item.src" :src="item.src" :alt="`镜头 ${index + 1}`" loading="lazy" />
+            <span v-else class="blank">
+              <t-loading v-if="item.state === '生成中'" size="small" />
+              <template v-else>{{ item.state === "生成失败" ? "失败" : "待生成" }}</template>
+            </span>
+          </button>
+          <button v-if="storyboard.length > VISIBLE_LIMIT" class="thumb more" @click.stop="openShots()">
+            还有 {{ storyboard.length - VISIBLE_LIMIT }} 镜<br />在镜头台里看
+          </button>
+        </div>
 
-        <!-- <t-button block @click="batchGenerateImage" :disabled="!storyboard.length" :loading="generateLoading">
-          {{ $t("workbench.production.node.storyboard.batchGenerateImage") }}
-        </t-button> -->
-      </div>
+        <p class="tip">出图、换参考、改提示词、出视频都在镜头台里做。</p>
+      </template>
     </div>
-    <editImage v-model="visible" v-if="visible" :flowData="currentRow" type="storyboard" @save="save" />
+
     <t-image-viewer
-      v-model:visible="previewVisible"
       v-if="previewVisible"
+      v-model:visible="previewVisible"
       :images="previewImages"
       :onClose="closePreview"
       :onDownload="downLoadImage"
@@ -119,10 +61,8 @@
 </template>
 
 <script setup lang="ts">
-import { useLocalStorage } from "@vueuse/core";
-import editImage from "../components/editImage/index.vue";
 import { LoadingPlugin } from "tdesign-vue-next";
-import { Handle, Position, type Edge } from "@vue-flow/core";
+import { Handle, Position } from "@vue-flow/core";
 import axios from "@/utils/axios";
 import type { AssetItem, Storyboard } from "../utils/flowBuilder";
 import projectStore from "@/stores/project";
@@ -130,92 +70,58 @@ import productionAgentStore from "@/stores/productionAgent";
 const { project } = storeToRefs(projectStore());
 const { episodesId } = storeToRefs(productionAgentStore());
 
+// 分镜节点现在只是「进度总览 + 入口」：逐镜的出图 / 出视频、参考、版本、增删
+// 全部在镜头台（/shots）里做，流程图不再承载这些操作。
 const props = defineProps<{
   id: string;
-  handleIds: {
-    target: string;
-    source: string;
-  };
+  handleIds: { target: string; source: string };
   assetsData: AssetItem[];
 }>();
 
 const storyboard = defineModel<Storyboard[]>({ required: true });
 
-const visible = ref(false);
+const VISIBLE_LIMIT = 24;
+const visibleShots = computed(() => storyboard.value.slice(0, VISIBLE_LIMIT));
+const doneCount = computed(() => storyboard.value.filter((s) => s.src).length);
+const failedCount = computed(() => storyboard.value.filter((s) => s.state === "生成失败").length);
+const pendingCount = computed(() => storyboard.value.filter((s) => s.state === "生成中").length);
+
+const router = useRouter();
+/** 打开镜头台（逐镜出图 / 出视频、参考可自由挑、有版本链） */
+function openShots(shotId?: number | null) {
+  void router.push({ path: "/shots", query: { scriptId: String(episodesId.value ?? ""), shot: shotId ? String(shotId) : undefined } });
+}
+
+// ─── 九宫格预览 / 导出（整集总览，留在这里） ─────────────────
 const previewVisible = ref(false);
 const previewImages = ref<string[]>([]);
-const gridScale = useLocalStorage("storyboardGridScale", 1);
-
-const hoveredIndex = ref<number | null>(null);
-const selectedIds = ref<number[]>([]);
-
-function setHoveredFrame(index: number | null) {
-  hoveredIndex.value = index;
-}
-
-function selectAll() {
-  selectedIds.value = storyboard.value.map((s) => s.id!).filter(Boolean);
-}
-function handleDeleteSelected() {
-  const dialog = DialogPlugin.confirm({
-    header: $t("workbench.assets.confirmDeleteHeader"),
-    body: $t("workbench.production.node.storyboard.confirmBatchDeleteBody", { index: selectedIds.value.length }),
-    confirmBtn: $t("workbench.assets.deleteBtn"),
-    cancelBtn: $t("workbench.assets.cancelBtn"),
-    theme: "warning",
-    onConfirm: async () => {
-      try {
-        if (!selectedIds.value.length) {
-          dialog.destroy();
-          return window.$message.error($t("workbench.production.node.storyboard.pleaseSelectImage"));
-        }
-        axios.post("/production/storyboard/batchDelete", {
-          ids: selectedIds.value,
-          projectId: project.value?.id,
-        });
-        storyboard.value = storyboard.value.filter((i) => !selectedIds.value.includes(i.id!));
-        selectedIds.value = [];
-        window.$message.success($t("workbench.production.node.storyboard.deleteSuccess"));
-      } catch (e) {
-        window.$message.error((e as any)?.message || $t("workbench.production.node.storyboard.removeFailed"));
-      } finally {
-        dialog.destroy();
-      }
-    },
-  });
-}
-const currentRow = ref<{
-  flowId?: number | null;
-  resultImages: { src: string; prompt: string }[];
-  referanceImages: string[];
-}>({
-  flowId: null,
-  resultImages: [],
-  referanceImages: [],
-});
-
-const tagColors = ["#5bccb3", "#9c7cfc", "#fbbf24", "#5b9afc", "#e86b6b", "#7cb8fc", "#e8a855", "#34d399"];
 
 function closePreview() {
   previewImages.value = [];
 }
-async function downLoadImage() {
+const generatedIds = () => (storyboard.value ?? []).filter((s) => s.src).map((s) => s.id!);
+
+async function previewAll() {
+  const allIds = generatedIds();
+  if (!allIds.length) return window.$message.warning($t("workbench.production.node.storyboard.noPreviewImages"));
   LoadingPlugin(true);
-  const allIds = (storyboard.value ?? []).filter((s) => s.src).map((s) => s.id!);
-  if (!allIds.length) {
-    window.$message.warning($t("workbench.production.node.storyboard.noPreviewImages"));
-    LoadingPlugin(false);
-    return;
-  }
   try {
-    const res = await axios.post(
-      "/production/storyboard/downPreviewImage",
-      {
-        storyboardIds: allIds,
-      },
-      { responseType: "blob" },
-    );
-    // 创建下载链接
+    const { data } = await axios.post("/production/storyboard/previewImage", { storyboardIds: allIds, projectId: project.value?.id });
+    previewImages.value = [data];
+    previewVisible.value = true;
+  } catch {
+    window.$message.error($t("workbench.production.node.storyboard.imageLoadFailed"));
+  } finally {
+    LoadingPlugin(false);
+  }
+}
+
+async function downLoadImage() {
+  const allIds = generatedIds();
+  if (!allIds.length) return window.$message.warning($t("workbench.production.node.storyboard.noPreviewImages"));
+  LoadingPlugin(true);
+  try {
+    const res = await axios.post("/production/storyboard/downPreviewImage", { storyboardIds: allIds }, { responseType: "blob" });
     const url = URL.createObjectURL(res as unknown as Blob);
     const a = document.createElement("a");
     a.href = url;
@@ -228,239 +134,20 @@ async function downLoadImage() {
     LoadingPlugin(false);
   }
 }
-async function previewAll() {
-  LoadingPlugin(true);
-  const allIds = (storyboard.value ?? []).filter((s) => s.src).map((s) => s.id!);
-  if (!allIds.length) {
-    window.$message.warning($t("workbench.production.node.storyboard.noPreviewImages"));
-    LoadingPlugin(false);
-    return;
-  }
-  try {
-    const { data } = await axios.post("/production/storyboard/previewImage", {
-      storyboardIds: allIds,
-      projectId: project.value?.id,
-    });
-    previewImages.value = [data];
-    previewVisible.value = true;
-  } catch {
-    window.$message.error($t("workbench.production.node.storyboard.imageLoadFailed"));
-  } finally {
-    LoadingPlugin(false);
-  }
-}
-const currentRowStoryboardInfo = ref<{ id: number | null; insertAfterIndex: number | null }>({
-  id: null,
-  insertAfterIndex: null,
-});
-const styleMaxSize = computed(() => {
-  if (gridScale.value <= 1) return gridScale.value;
-  else 1;
-});
-const generateLoading = ref(false);
-async function batchGenerateImage() {
-  if (!selectedIds.value.length) return window.$message.warning("请先选择分镜面板");
-  generateLoading.value = true;
-  try {
-    await productionAgentStore().batchGenerateStoryboard(selectedIds.value, true);
-    window.$message.success($t("workbench.production.node.storyboard.batchGenerateSuccess"));
-    selectedIds.value = [];
-  } catch (e) {
-    window.$message.error($t("workbench.production.node.storyboard.batchGenerateFailed"));
-  } finally {
-    generateLoading.value = false;
-  }
-}
-function editStoryboaryImage(item: Storyboard, images: string[], insertAfterIndex: number | null = null) {
-  currentRowStoryboardInfo.value = {
-    id: insertAfterIndex == null ? item?.id! : null,
-    insertAfterIndex,
-  };
-  currentRow.value = {
-    flowId: item?.flowId ?? null,
-    resultImages: [],
-    referanceImages: [],
-  };
-
-  if (currentRowStoryboardInfo.value.id) {
-    let imagesPush: string[] = [];
-
-    if (item.associateAssetsIds && item.associateAssetsIds.length > 0) {
-      const assetsImages: string[] = [];
-      for (const id of item.associateAssetsIds) {
-        // 先查顶层 asset
-        const asset = props.assetsData.find((a) => a.id === id);
-        if (asset) {
-          if (asset.src) assetsImages.push(asset.src);
-          continue;
-        }
-        // 再查 derive
-        for (const a of props.assetsData) {
-          const derive = a.derive?.find((d) => d.id === id);
-          if (derive) {
-            if (derive.src) assetsImages.push(derive.src);
-            break;
-          }
-        }
-      }
-      imagesPush = imagesPush.concat(assetsImages);
-    }
-    // if (item?.referenceIds && item.referenceIds.length > 0) {
-    //   const referenImages = storyboard.value
-    //     .filter((s) => item.referenceIds!.includes(s.id))
-    //     .map((s) => s.src)
-    //     .filter(Boolean) as string[];
-    //   imagesPush = imagesPush.concat(referenImages);
-    // }
-    currentRow.value.referanceImages = imagesPush;
-    currentRow.value.resultImages = [{ src: images.length ? images[0] : "", prompt: item.prompt ?? "" }];
-  } else {
-    currentRow.value.referanceImages = images.filter(Boolean);
-  }
-  visible.value = true;
-}
-
-async function save({ imageUrl, flowId }: { imageUrl: string; flowId: number }) {
-  if (!imageUrl) return;
-
-  const { id, insertAfterIndex } = currentRowStoryboardInfo.value;
-
-  // 插入模式：在两张图之间新增一条分镜
-  if (id === null && insertAfterIndex !== null) {
-    const newFrame: Storyboard = {
-      duration: 0,
-      prompt: "",
-      src: imageUrl,
-      videoDesc: "",
-      shouldGenerateImage: 1,
-      state: "已完成",
-    };
-    const { data } = await axios.post("/production/storyboard/addStoryboard", {
-      ...newFrame,
-      projectId: project.value?.id,
-      scriptId: episodesId.value,
-      flowId,
-    });
-
-    storyboard.value.splice(insertAfterIndex + 1, 0, { ...newFrame, id: data.id!, flowId });
-    productionAgentStore().setFlowData();
-    return;
-  }
-
-  // 更新模式：更新对应分镜的 src
-  const target = storyboard.value.find((s) => s.id === id);
-  if (target) {
-    target.src = imageUrl;
-    target.state = "已完成";
-    target.flowId = flowId;
-  }
-  await axios.post("/production/storyboard/updateStoryboardUrl", {
-    id: id,
-    url: imageUrl,
-    flowId,
-  });
-}
-
-async function removeFn(id: number) {
-  const dialog = DialogPlugin.confirm({
-    header: $t("workbench.assets.confirmDeleteHeader"),
-    body: $t("workbench.production.node.storyboard.confirmDeleteBody"),
-    confirmBtn: $t("workbench.assets.deleteBtn"),
-    cancelBtn: $t("workbench.assets.cancelBtn"),
-    theme: "warning",
-    onConfirm: async () => {
-      if (!id) {
-        const index = storyboard.value.findIndex((s) => s.id === id);
-        if (index !== -1) {
-          storyboard.value.splice(index, 1);
-        }
-        dialog.destroy();
-        return;
-      }
-      try {
-        await axios.post("/production/storyboard/removeFrame", {
-          id,
-          projectId: project.value?.id,
-        });
-        const index = storyboard.value.findIndex((s) => s.id === id);
-        if (index !== -1) {
-          storyboard.value.splice(index, 1);
-        }
-      } catch (e) {
-        window.$message.error((e as any)?.message || $t("workbench.production.node.storyboard.removeFailed"));
-      } finally {
-        dialog.destroy();
-      }
-    },
-  });
-}
-
-function editInfo(item: Storyboard) {
-  const formData = reactive({
-    prompt: item.prompt ?? "",
-    videoDesc: item?.videoDesc ?? "",
-  });
-
-  const bodyVNode = () =>
-    h("div", { class: "editInfoForm" }, [
-      h("div", { class: "editInfoField" }, [
-        h("label", { class: "editInfoLabel" }, $t("workbench.production.node.storyboard.prompt")),
-        h(resolveComponent("t-textarea"), {
-          value: formData.prompt,
-          placeholder: $t("workbench.production.node.storyboard.promptPlaceholder"),
-          autosize: { minRows: 3, maxRows: 6 },
-          "onUpdate:value": (v: string) => (formData.prompt = v),
-        }),
-      ]),
-      h("div", { class: "editInfoField" }, [
-        h("label", { class: "editInfoLabel" }, $t("workbench.production.node.storyboard.videoDesc")),
-        h(resolveComponent("t-textarea"), {
-          value: formData.videoDesc,
-          placeholder: $t("workbench.production.node.storyboard.videoDescPlaceholder"),
-          autosize: { minRows: 3, maxRows: 6 },
-          "onUpdate:value": (v: string) => (formData.videoDesc = v),
-        }),
-      ]),
-    ]);
-
-  const confirmDialog = DialogPlugin.confirm({
-    header: $t("workbench.production.node.storyboard.editInfo"),
-    body: bodyVNode,
-    width: 480,
-    confirmBtn: {
-      content: $t("common.submit"),
-      theme: "primary",
-      loading: false,
-    },
-    onConfirm: async () => {
-      confirmDialog.update({ confirmBtn: { content: $t("common.submitting"), loading: true } });
-      try {
-        await axios.post("/production/storyboard/editStoryboardInfo", {
-          id: item.id,
-          prompt: formData.prompt,
-          videoDesc: formData.videoDesc,
-        });
-        item.prompt = formData.prompt;
-        item.videoDesc = formData.videoDesc;
-        window.$message.success($t("common.editSuccess"));
-      } catch (e) {
-        window.$message.error((e as any)?.message || $t("common.editFailed"));
-      } finally {
-        confirmDialog.update({ confirmBtn: { content: $t("common.submit"), loading: false } });
-        confirmDialog.destroy();
-      }
-    },
-  });
-}
 </script>
 
 <style lang="scss" scoped>
 .storyboard {
-  min-width: 500px;
-  max-width: 100vw;
+  width: 520px;
   user-select: text;
   cursor: default;
 
+  .toShots {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+  }
   .titleBar {
     cursor: grab;
     user-select: none;
@@ -473,209 +160,99 @@ function editInfo(item: Storyboard) {
     border-radius: 8px 0;
     font-size: 16px;
   }
-
   .content {
     margin-top: 12px;
   }
-
-  .frameGrid {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: flex-start;
-    gap: 0;
-  }
-
-  .frameItem {
-    position: relative;
-    display: inline-flex;
-    align-items: flex-start;
-    margin: 4px;
-  }
-
-  .addBetween {
-    position: absolute;
-    z-index: 10;
-    top: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    opacity: 0;
-    pointer-events: none;
-    span {
-      line-height: 1;
-      white-space: nowrap;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    &.expanded {
-      opacity: 1;
-      pointer-events: auto;
-    }
-    &:hover {
-      // background: var(--td-brand-color);
-      // color: #fff;
-      // transform: scale(1.15);
-    }
-    &--left {
-      transform: translate(calc(-50% - 4px), -50%);
-    }
-    &--right {
-      transform: translate(calc(50% + 4px), -50%);
-      right: 0;
-    }
-  }
-
-  .frameCard {
-    display: flex;
-    flex-direction: column;
-    cursor: pointer;
-    transition:
-      transform 0.2s,
-      box-shadow 0.2s;
-  }
-
-  .frameImage {
-    position: relative;
-    border-radius: 8px;
-    overflow: hidden;
-    flex-shrink: 0;
-    transition: opacity 0.2s ease;
-    &:hover {
-      .remove,
-      .editNode {
-        opacity: 1;
-      }
-    }
-    .remove {
-      position: absolute;
-      top: 3px;
-      right: 3px;
-      z-index: 9999;
-      padding: 5px;
-      border-radius: 10px;
-      background-color: rgba(220, 50, 50, 0.7);
-      cursor: pointer;
-      opacity: 0;
-      transform-origin: top right;
-      &:hover {
-        background-color: rgba(220, 50, 50, 1);
-      }
-    }
-    .editNode {
-      position: absolute;
-      bottom: 3px;
-      left: 3px;
-      z-index: 9999;
-      padding: 5px;
-      border-radius: 10px;
-      background-color: rgba(24, 144, 255, 0.7);
-      cursor: pointer;
-      transform-origin: bottom left;
-      opacity: 0;
-      &:hover {
-        background-color: rgba(24, 144, 255, 1);
-      }
-    }
-  }
-
-  .generatingPlaceholder {
-    width: 100%;
-    height: 100%;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 6px;
-    background-color: var(--td-bg-color-container-hover, #f5f5f5);
-    font-size: 12px;
-  }
-
-  .frameImg {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    .imageToolsWrap {
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.2s ease;
-    }
-
-    &:hover {
-      .imageToolsWrap {
-        opacity: 1;
-        pointer-events: auto;
-      }
-    }
-  }
-
-  .frameCheckbox {
-    position: absolute;
-    left: 3px;
-    top: 3px;
-    z-index: 3;
-    transform-origin: top left;
-  }
-
-  .frameTypeTag {
-    color: #fff;
-    font-size: 10px;
-    font-weight: 600;
-    border: none;
-    z-index: 2;
-    padding: 0 4px;
-    line-height: 18px;
-    border-radius: 3px;
-  }
-
-  .frameTag {
-    position: absolute;
-    right: 8px;
-    bottom: 8px;
-    color: #fff;
-    font-size: 12px;
-    font-weight: 600;
-    border: none;
-  }
-
-  .scaleControl {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-bottom: 8px;
-    font-size: 13px;
-    color: var(--td-text-color-primary, #333);
-  }
-
-  .frameInfo {
-    margin-top: 6px;
-    font-size: 12px;
-    color: var(--td-text-color-primary, #333);
-    line-height: 1.4;
-    max-width: 200px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
 }
-:deep(.t-image__wrapper) {
-  background-color: transparent !important;
-}
-.editInfoForm {
+.progress {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 4px 0;
-}
-
-.editInfoField {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.editInfoLabel {
-  font-size: 13px;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 12px;
   color: var(--td-text-color-secondary);
+  .num {
+    font-size: 20px;
+    font-weight: 600;
+    color: var(--td-text-color-primary);
+    font-variant-numeric: tabular-nums;
+  }
+  .failed {
+    color: var(--td-error-color);
+  }
+  .pending {
+    color: var(--td-brand-color);
+  }
+}
+.grow {
+  flex: 1;
+}
+.bar {
+  height: 4px;
+  margin: 6px 0 10px;
+  border-radius: 2px;
+  background: var(--td-bg-color-secondarycontainer);
+  overflow: hidden;
+  i {
+    display: block;
+    height: 100%;
+    background: var(--td-brand-color);
+    transition: width 0.3s;
+  }
+}
+.thumbs {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.thumb {
+  position: relative;
+  padding: 0;
+  border: 1px solid var(--td-component-stroke);
+  border-radius: 6px;
+  background: var(--td-bg-color-secondarycontainer);
+  cursor: pointer;
+  overflow: hidden;
+  &:hover {
+    border-color: var(--td-brand-color);
+  }
+  &.failed {
+    border-color: var(--td-error-color);
+  }
+  img,
+  .blank {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 56px;
+    object-fit: cover;
+    font-size: 10px;
+    color: var(--td-text-color-placeholder);
+  }
+  &.more {
+    display: grid;
+    place-items: center;
+    height: 56px;
+    padding: 0 4px;
+    font-size: 10px;
+    line-height: 1.4;
+    color: var(--td-text-color-placeholder);
+  }
+}
+.no {
+  position: absolute;
+  top: 2px;
+  left: 3px;
+  z-index: 1;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: rgb(0 0 0 / 55%);
+  color: #fff;
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.tip {
+  margin: 10px 0 0;
+  color: var(--td-text-color-placeholder);
+  font-size: 12px;
 }
 </style>

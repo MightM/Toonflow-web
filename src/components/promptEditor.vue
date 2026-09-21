@@ -398,7 +398,8 @@ function handlePaste(e: ClipboardEvent) {
   padding: 10px;
   overflow-y: auto;
   font-size: 13px;
-  line-height: 1.6;
+  // 行内的参考标签（含 18px 缩略图）实际有 22px 高，行距小于它时整段会挤成一坨
+  line-height: 2;
   color: var(--td-text-color-primary);
   white-space: pre-wrap;
   word-break: break-all;

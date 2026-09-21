@@ -34,7 +34,8 @@
       "type": {
         "image": "图像",
         "text": "文本",
-        "video": "视频"
+        "video": "视频",
+        "tts": "语音"
       },
       "msg": {
         "fetchModelFailed": "获取模型数据失败:"
@@ -644,9 +645,12 @@
       "cornerScape": "塑角造景",
       "production": "视频生产",
       "assetCenter": "资产中心",
+      "assetCanvas": "资产画布",
+      "assetBoard": "资产",
       "settings": "设置",
       "jumpGithub": "跳转Github",
-      "feedbackQuestions": "反馈问题"
+      "feedbackQuestions": "反馈问题",
+      "freeCanvas": "画布"
     },
     "project": {
       "title": "我的项目",
@@ -708,7 +712,13 @@
         "directorManualName": "导演手册名称",
         "directorManualNamePh": "输入导演手册名称",
         "directorFile": "导演手册文件",
-        "directorManualCover": "导演手册封面"
+        "directorManualCover": "导演手册封面",
+        "artStyleOptional": "视觉手册（可选）",
+        "noArtStyle": "不绑定画风",
+        "canvasHint": "无限画布：一张自由画布，文本 / 图片 / 音频 / 视频节点随意连线生成，适合精细打磨每一段视频。想批量出片请用短剧流水线。",
+        "pipelineHint": "短剧流水线：小说 / 剧本 → 资产 → 分镜 → 视频，借助 AI 批量生成剧集。想自由组织灵感、逐条精修请用无限画布。",
+        "projectIntro": "项目简介",
+        "projectIntroPh": "写几句这个项目要做什么（可选）"
       },
       "msg": {
         "fetchFailed": "获取项目列表失败",
@@ -756,7 +766,29 @@
       },
       "type": {
         "novel": "基于小说原文",
-        "script": "基于小说剧本"
+        "script": "基于小说剧本",
+        "canvas": "无限画布",
+        "pipeline": "短剧流水线"
+      },
+      "mode": {
+        "title": "选择项目模式",
+        "subtitle": "两种模式的数据互不相通，创建后不能切换",
+        "canvas": {
+          "title": "无限画布",
+          "tagline": "灵活自由，适合追求精细制作的视频项目",
+          "p1": "自由添加文本、图片、音频、视频节点，连线互相引用",
+          "p2": "文生图、文生视频、图生视频、多图参考生视频、文生语音",
+          "p3": "没有集数和流程约束，逐段打磨每一条视频",
+          "fit": "适合：MV、广告片、灵感实验、单条精修视频"
+        },
+        "pipeline": {
+          "title": "短剧流水线",
+          "tagline": "借助 AI 快速解析剧本、生成剧集、拼接镜头，批量出片",
+          "p1": "小说 / 剧本 → 资产 → 分镜 → 视频一条线",
+          "p2": "剧本 Agent 与生产 Agent 自动拆解剧集、资产与分镜",
+          "p3": "镜头台逐镜出图出片，剪辑台拼接成集",
+          "fit": "适合：多集短剧、漫剧、系列内容"
+        }
       }
     },
     "novel": {

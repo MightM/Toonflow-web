@@ -44,23 +44,16 @@
           <h2>{{ project?.name || $t("workbench.selectProject") }}</h2>
         </div>
         <div class="rightBtnList f ac">
-          <t-tooltip
-            :content="menu.labelKey ? $t(menu.labelKey) : ''"
-            placement="bottom"
-            destroyOnClose
-            :showArrow="false"
-            v-for="(menu, index) in rightBtnList"
-            :key="index">
-            <div
-              class="item fc c"
-              v-if="menu.type === 'btn' && (project.projectType === 'novel' || !menu.nodelOnly)"
-              :class="{ active: activeMenu == menu.path }"
-              @click="handleClick(menu)">
-              <component :is="menu.icon" class="icon" />
-            </div>
-            <div class="divider" v-if="menu.type === 'divider'"></div>
-          </t-tooltip>
+          <template v-for="(menu, index) in visibleMenus" :key="index">
+            <t-tooltip v-if="menu.type === 'btn'" :content="menu.labelKey ? $t(menu.labelKey) : ''" placement="bottom" destroyOnClose :showArrow="false">
+              <div class="item fc c" :class="{ active: isActive(menu) }" @click="handleClick(menu)">
+                <component :is="menu.icon" class="icon" />
+              </div>
+            </t-tooltip>
+            <div v-else class="divider"></div>
+          </template>
         </div>
+        <div class="spacer" aria-hidden="true" />
       </div>
       <div class="viewBox">
         <router-view v-slot="{ Component }">
@@ -78,6 +71,7 @@ import axios from "@/utils/axios";
 import setting from "@/components/setting/index.vue";
 import hello from "@/components/hello.vue";
 import projectStore from "@/stores/project";
+import { lastAssetPath } from "@/views/assetBoard/assetView";
 const { project } = storeToRefs(projectStore());
 import settingStore from "@/stores/setting";
 import { NotifyPlugin } from "tdesign-vue-next";
@@ -88,15 +82,25 @@ const menuList = ref([
   // { type: "divider" },
 ]);
 
-const rightBtnList = ref([
-  { type: "btn", path: "/novel", labelKey: "workbench.menu.novel", icon: "i-notebook", nodelOnly: true },
-  { type: "btn", path: "/scriptAgent", labelKey: "workbench.menu.scriptAgent", icon: "i-color-filter", nodelOnly: true },
-  { type: "btn", path: "/script", labelKey: "workbench.menu.scriptManage", icon: "i-document-folder" },
-  { type: "btn", path: "/cornerScape", labelKey: "workbench.menu.cornerScape", icon: "i-peoples-two" },
-  { type: "btn", path: "/production", labelKey: "workbench.menu.production", icon: "i-carousel-video" },
-  { type: "divider" },
-  { type: "btn", path: "/assets", labelKey: "workbench.menu.assetCenter", icon: "i-receive" },
+// 顶栏按钮按项目模式显示：novel / script 是短剧流水线的两个子形态，canvas 是无限画布
+const PIPELINE = ["novel", "script"];
+const ALL = ["novel", "script", "canvas"];
+type TopMenu = { type: "btn" | "divider"; path?: string; labelKey?: string; icon?: string; alsoActive?: string[]; modes: string[] };
+const rightBtnList = ref<TopMenu[]>([
+  { type: "btn", path: "/novel", labelKey: "workbench.menu.novel", icon: "i-notebook", modes: ["novel"] },
+  { type: "btn", path: "/scriptAgent", labelKey: "workbench.menu.scriptAgent", icon: "i-color-filter", modes: ["novel"] },
+  { type: "btn", path: "/script", labelKey: "workbench.menu.scriptManage", icon: "i-document-folder", modes: PIPELINE },
+  // 资产列表与资产画布是同一功能的两种展示，页面内切换；按钮打开上次用的那种
+  { type: "btn", path: "/assetBoard", labelKey: "workbench.menu.assetBoard", icon: "i-peoples-two", alsoActive: ["/canvas"], modes: PIPELINE },
+  { type: "btn", path: "/production", labelKey: "workbench.menu.production", icon: "i-carousel-video", modes: PIPELINE },
+  { type: "btn", path: "/freeCanvas", labelKey: "workbench.menu.freeCanvas", icon: "i-mind-mapping", modes: ["canvas"] },
+  { type: "divider", modes: ALL },
+  { type: "btn", path: "/assets", labelKey: "workbench.menu.assetCenter", icon: "i-receive", modes: ALL },
 ]);
+// 老数据里 projectType 可能是别的值，按剧本项目兜底（与项目列表的 openProject 同口径）
+const menuVisible = (menu: TopMenu) => menu.modes.includes(project.value?.projectType === "canvas" || project.value?.projectType === "novel" ? project.value.projectType : "script");
+// 只把当前模式可见的按钮交给模板：隐藏项若还包在 t-tooltip 里，空 tooltip 会跟着一起弹出来
+const visibleMenus = computed(() => rightBtnList.value.filter(menuVisible));
 
 const router = useRouter();
 const route = useRoute();
@@ -109,10 +113,13 @@ watch(
   },
 );
 
+const isActive = (menu: { path?: string; alsoActive?: string[] }) => activeMenu.value === menu.path || !!menu.alsoActive?.includes(activeMenu.value);
+
 function handleClick(menu: any) {
   if (menu.needProject && !project.value) return;
-  router.push(menu.path);
-  activeMenu.value = menu.path;
+  const path = menu.path === "/assetBoard" ? lastAssetPath() : menu.path;
+  router.push(path);
+  activeMenu.value = path;
 }
 
 async function jumpGithub() {
@@ -279,8 +286,20 @@ onUnmounted(() => {
     scrollbar-gutter: stable;
     padding-left: 32px;
     padding-right: 32px;
+    // 标题靠左、功能按钮居中：左右两列等宽
     .topMenu {
       height: 50px;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      column-gap: 16px;
+      .title {
+        min-width: 0;
+        h2 {
+          overflow: hidden;
+          white-space: nowrap;
+          text-overflow: ellipsis;
+        }
+      }
       .rightBtnList {
         .item {
           margin-bottom: 0px !important;

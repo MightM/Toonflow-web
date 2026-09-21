@@ -1,8 +1,12 @@
 <template>
   <t-card class="assets">
     <Handle :id="props.handleIds.target" type="target" :position="Position.Top" />
-    <div class="titleBar dragHandle">
+    <div class="titleBar dragHandle f ac jb">
       <div class="title">{{ $t("workbench.production.node.assets.title") }}</div>
+      <t-button size="small" variant="outline" class="openCanvas" @mousedown.stop @click.stop="openCanvas">
+        <template #icon><i-mind-mapping /></template>
+        {{ $t("workbench.menu.assetCanvas") }}
+      </t-button>
     </div>
     <div class="content">
       <div class="cardGrid">
@@ -34,7 +38,7 @@
             <i-right size="32"></i-right>
           </div>
           <div class="deriveAssets">
-            <t-card v-for="(item, index) in asset.derive" :key="index" class="assetCard" @click="generateAssetsImage(item, asset.src)">
+            <t-card v-for="(item, index) in asset.derive" :key="index" class="assetCard" @click="generateAssetsImage(item)">
               <div v-if="item.src && item.state == '已完成'" class="assetImageWrap">
                 <t-image :src="item.src" fit="contain" class="assetImage" :preview="true">
                   <template #overlayContent>
@@ -71,16 +75,15 @@
         </div>
       </div>
     </div>
-    <editImage v-model="visible" v-if="visible" :flowData="currentRow" @save="save" />
   </t-card>
 </template>
 
 <script setup lang="ts">
 import { Handle, Position, type Edge } from "@vue-flow/core";
-import editImage from "../components/editImage/index.vue";
 import { type AssetItem, type DeriveAsset } from "../utils/flowBuilder";
 import axios from "@/utils/axios";
 import useProjectStore from "@/stores/project";
+import type { Ref } from "vue";
 const { project } = storeToRefs(useProjectStore());
 const props = defineProps<{
   id: string;
@@ -90,44 +93,10 @@ const props = defineProps<{
 }>();
 
 const assets = defineModel<AssetItem[]>({ required: true });
-const currentRow = ref<{
-  flowId?: number;
-  resultImages: { src: string; prompt: string }[];
-  referanceImages: string[];
-}>({
-  resultImages: [],
-  referanceImages: [],
-});
-const visible = ref(false);
-const currentAssetsId = ref();
-function generateAssetsImage(row: DeriveAsset, referanceImageUrl: string) {
-  currentRow.value = {
-    flowId: row?.flowId,
-    resultImages: [{ src: row.src, prompt: row.prompt }],
-    referanceImages: [referanceImageUrl],
-  };
-  currentAssetsId.value = row.id;
-  visible.value = true;
-}
-
-async function save({ imageUrl, flowId }: { imageUrl: string; flowId: number }) {
-  // 更新对应分镜的 src
-  if (!imageUrl) return;
-  for (const i of assets.value) {
-    const target = i.derive.find((s) => s.id === currentAssetsId.value);
-    if (target) {
-      target.state = '已完成'
-      target.src = imageUrl;
-      target.flowId = flowId;
-      break;
-    }
-  }
-
-  await axios.post("/production/assets/updateAssetsUrl", {
-    id: currentAssetsId.value,
-    url: imageUrl,
-    flowId,
-  });
+// 衍生资产的重绘已并入资产画布（有版本链、参考可自由挑），这里只负责跳过去定位
+function generateAssetsImage(row: DeriveAsset) {
+  const scriptId = canvasEpisodesId?.value;
+  canvasRouter.push({ path: "/canvas", query: { ...(scriptId ? { scriptId: String(scriptId) } : {}), focus: `a:${row.id}` } });
 }
 
 async function removeFn(id: number) {
@@ -158,6 +127,14 @@ async function removeFn(id: number) {
     },
   });
 }
+
+// 打开资产画布，带上当前集
+const canvasEpisodesId = inject<Ref<number | undefined>>("episodesId");
+const canvasRouter = useRouter();
+function openCanvas() {
+  const scriptId = canvasEpisodesId?.value;
+  canvasRouter.push({ path: "/canvas", query: scriptId ? { scriptId: String(scriptId) } : {} });
+}
 </script>
 
 <style lang="scss" scoped>
@@ -169,6 +146,10 @@ async function removeFn(id: number) {
   .titleBar {
     cursor: grab;
     user-select: none;
+
+    .openCanvas {
+      margin-right: 8px;
+    }
 
     .title {
       background-color: #000;

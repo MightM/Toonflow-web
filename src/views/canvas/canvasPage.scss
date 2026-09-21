@@ -1,0 +1,251 @@
+.canvas-page {
+  --canvas-bg: #f4f5f7;
+  --canvas-dot: rgba(15, 23, 42, 0.16);
+  --canvas-mask: rgba(244, 245, 247, 0.72);
+  --glass: color-mix(in srgb, var(--td-bg-color-container) 86%, transparent);
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--canvas-bg);
+}
+html[theme-mode="dark"] .canvas-page {
+  --canvas-bg: #0d0f14;
+  --canvas-dot: rgba(255, 255, 255, 0.09);
+  --canvas-mask: rgba(13, 15, 20, 0.72);
+}
+.flow {
+  width: 100%;
+  height: 100%;
+}
+.glass {
+  background: var(--glass);
+  backdrop-filter: blur(14px) saturate(1.2);
+  border: 1px solid var(--td-component-stroke);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+}
+.topbar {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  right: 96px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+  > * {
+    pointer-events: auto;
+  }
+}
+.glass-btn {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid var(--td-component-stroke);
+  background: var(--glass);
+  color: var(--td-text-color-primary);
+  cursor: pointer;
+  &:hover {
+    border-color: var(--td-brand-color);
+  }
+}
+.title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 40px;
+  padding: 0 6px 0 14px;
+  border-radius: 12px;
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    color: var(--td-text-color-placeholder);
+  }
+  strong {
+    font-size: 15px;
+    max-width: 260px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .episode {
+    width: 140px;
+  }
+}
+.rail {
+  position: absolute;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 6px;
+  border-radius: 18px;
+  button {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: none;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--td-text-color-secondary);
+    cursor: pointer;
+    transition: background-color 150ms, color 150ms, transform 150ms;
+    &:hover {
+      background: var(--td-bg-color-container-hover);
+      color: var(--td-text-color-primary);
+    }
+    &:active {
+      transform: scale(0.94);
+    }
+    &:focus-visible {
+      outline: 2px solid var(--td-brand-color-focus);
+    }
+  }
+}
+// 底部横排（无限画布）：居中，分隔线转成竖线
+.rail.bottom {
+  top: auto;
+  right: auto;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  flex-direction: row;
+  padding: 6px 10px;
+  .rule {
+    width: 1px;
+    height: 22px;
+  }
+}
+.rule {
+  width: 22px;
+  height: 1px;
+  background: var(--td-component-stroke);
+  &.v {
+    width: 1px;
+    height: 18px;
+  }
+}
+.dock {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  border-radius: 12px;
+  button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--td-text-color-secondary);
+    cursor: pointer;
+    &.active {
+      background: var(--td-brand-color);
+      color: #fff;
+    }
+    &:hover:not(.active) {
+      background: var(--td-bg-color-container-hover);
+    }
+  }
+  .zoom {
+    min-width: 44px;
+    text-align: center;
+    font-size: 12px;
+    font-variant-numeric: tabular-nums;
+  }
+}
+.minimap {
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--td-component-stroke);
+  background: var(--glass);
+}
+.empty-state {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 28px 36px;
+  border-radius: 18px;
+  text-align: center;
+  color: var(--td-text-color-secondary);
+  h3 {
+    margin: 10px 0 4px;
+    color: var(--td-text-color-primary);
+  }
+  p {
+    margin: 0;
+    font-size: 13px;
+  }
+}
+:deep(.vue-flow__edge.edge-derive path) {
+  stroke: var(--td-text-color-placeholder);
+  stroke-width: 1.5;
+  stroke-dasharray: 2 5;
+}
+:deep(.vue-flow__edge-path) {
+  stroke: var(--td-brand-color);
+  stroke-width: 1.6;
+}
+:deep(.vue-flow__node) {
+  border-radius: 14px;
+}
+// 光标：移动工具下空白处是箭头，抓手工具 / 按住空格时是手
+.tool-select :deep(.vue-flow__pane) {
+  cursor: default;
+}
+.tool-pan :deep(.vue-flow__pane),
+.space-pan :deep(.vue-flow__pane),
+.space-pan :deep(.vue-flow__node) {
+  cursor: grab;
+}
+.tool-pan :deep(.vue-flow__pane.dragging),
+.space-pan :deep(.vue-flow__pane.dragging) {
+  cursor: grabbing;
+}
+// 框选框与多选包围框（Figma 蓝）
+.canvas-page {
+  --select-blue: #0d99ff;
+}
+:deep(.vue-flow__selection) {
+  border: 1px solid var(--select-blue);
+  background: color-mix(in srgb, var(--select-blue) 8%, transparent);
+  border-radius: 0;
+}
+:deep(.vue-flow__nodesselection-rect) {
+  border: 1px solid var(--select-blue);
+  background: transparent;
+  border-radius: 4px;
+  cursor: move;
+}
+
+// 按住 Option/Alt 时节点上显示「复制」光标
+.alt-copy :deep(.vue-flow__node),
+.alt-copy :deep(.vue-flow__node *) {
+  cursor: copy !important;
+}
+
+// 按住 Option/Alt 拖节点时，Chrome 会把图片 / 视频当成原生拖拽（拖出一个半透明的画面），d3 的节点拖动就被抢走；
+// 根元素已 @dragstart.prevent，这里再从样式上关掉原生拖拽
+:deep(.vue-flow__node img),
+:deep(.vue-flow__node video) {
+  -webkit-user-drag: none;
+  user-select: none;
+}
+
+// 选中节点的操作条与输入面板要压在所有节点之上：frame 式节点更大，输入面板常常盖在相邻节点上，
+// 不抬高的话点到面板里会先选中下面那个节点、面板随之关闭
+:deep(.vue-flow__node-toolbar) {
+  z-index: 2000 !important;
+}
