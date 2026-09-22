@@ -106,6 +106,7 @@
     <CreateStateDialog v-model:visible="stateVisible" :parent-key="stateParent" @create="onCreateState" />
     <SaveToAssetsDialog v-model:visible="saveVisible" :node-key="saveKey" />
     <VoicePicker v-model:visible="voiceVisible" :node-key="voiceKey" @bind="bindVoice" />
+    <CropDialog v-model:visible="cropVisible" :src="cropSrc" :name="cropName" @confirm="applyCrop" />
     <GroupActionBar :selection="selection" @derive="deriveFrom" />
     <AssetModelsDialog v-if="projectId" v-model:visible="modelsVisible" :project-id="projectId" @saved="canvas.refresh" />
     <MediaLightbox v-model:visible="preview.visible" :src="preview.src" :kind="preview.kind" />
@@ -134,6 +135,7 @@ import AssetViewSwitch from "../assetBoard/AssetViewSwitch.vue";
 import ConnectMenu, { type ConnectMenuKind } from "./components/ConnectMenu.vue";
 import GroupActionBar from "./components/GroupActionBar.vue";
 import VoicePicker from "./components/VoicePicker.vue";
+import CropDialog from "./components/CropDialog.vue";
 import { canvasApi, readAsDataUrl } from "./api";
 import { CANVAS_CTX, type CanvasContext } from "./context";
 import { useCanvas, confirmDialog, type CanvasNode } from "./useCanvas";
@@ -211,6 +213,11 @@ const {
   voiceKey,
   openVoice,
   bindVoice,
+  cropVisible,
+  cropSrc,
+  cropName,
+  openCrop,
+  applyCrop,
 } = useCanvasInteractions({
   flowId: "assetCanvas",
   canvas,
@@ -400,6 +407,7 @@ const ctx: CanvasContext = {
   uploadTo,
   deleteNode: (key) => void deleteWithHint([key]),
   captureFrame: (key, at) => void captureFrame(key, at),
+  openCrop,
 };
 provide(CANVAS_CTX, ctx);
 </script>

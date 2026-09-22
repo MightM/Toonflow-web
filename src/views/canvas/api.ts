@@ -17,8 +17,8 @@ export const canvasApi = {
     post<{ id: number; sort: number }>("/canvas/addEdge", { projectId, sourceKey, targetKey }),
   removeEdge: (projectId: number, id: number) => post<unknown>("/canvas/removeEdge", { projectId, id }),
   reorderEdges: (projectId: number, targetKey: string, ids: number[]) => post<unknown>("/canvas/reorderEdges", { projectId, targetKey, ids }),
-  createNode: (projectId: number, kind: MediaKind, position: { x: number; y: number }, name?: string, params?: Record<string, unknown>) =>
-    post<{ key: string; id: number }>("/canvas/createNode", { projectId, kind, position, name, params }),
+  createNode: (projectId: number, kind: MediaKind, position: { x: number; y: number }, name?: string, params?: Record<string, unknown>, prompt?: string) =>
+    post<{ key: string; id: number }>("/canvas/createNode", { projectId, kind, position, name, params, prompt }),
   updateNode: (body: { projectId: number; key: string; name?: string; describe?: string; prompt?: string; params?: Record<string, unknown>; assetType?: AssetType | null }) =>
     post<unknown>("/canvas/updateNode", body),
   listArtStyles: () => post<ArtStyleDto[]>("/canvas/listArtStyles", {}),

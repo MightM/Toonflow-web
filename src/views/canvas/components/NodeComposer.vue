@@ -236,6 +236,7 @@ const MODEL_LABEL: Record<string, string> = {
   krea2_portrait: "人物定妆照",
   krea2_4view: "人物多视图",
   krea2_edit: "改图",
+  krea2_restyle: "参照改写",
   krea2_dual: "双图合成",
   krea2_multi: "多图合成",
   h3_t2v: "文生视频",

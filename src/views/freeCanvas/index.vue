@@ -108,6 +108,7 @@
     <CreateStateDialog v-model:visible="stateVisible" :parent-key="stateParent" @create="onCreateState" />
     <AssetModelsDialog v-if="projectId" v-model:visible="modelsVisible" :project-id="projectId" @saved="canvas.refresh" />
     <VoicePicker v-model:visible="voiceVisible" :node-key="voiceKey" @bind="bindVoice" />
+    <CropDialog v-model:visible="cropVisible" :src="cropSrc" :name="cropName" @confirm="applyCrop" />
   </div>
 </template>
 
@@ -132,6 +133,7 @@ import HistoryDrawer from "../canvas/components/HistoryDrawer.vue";
 import ConnectMenu, { type ConnectMenuKind } from "../canvas/components/ConnectMenu.vue";
 import GroupActionBar from "../canvas/components/GroupActionBar.vue";
 import VoicePicker from "../canvas/components/VoicePicker.vue";
+import CropDialog from "../canvas/components/CropDialog.vue";
 import SaveToAssetsDialog from "../canvas/components/SaveToAssetsDialog.vue";
 import { canvasApi, readAsDataUrl } from "../canvas/api";
 import { CANVAS_CTX, type CanvasContext } from "../canvas/context";
@@ -203,6 +205,11 @@ const {
   voiceKey,
   openVoice,
   bindVoice,
+  cropVisible,
+  cropSrc,
+  cropName,
+  openCrop,
+  applyCrop,
 } = useCanvasInteractions({
   flowId: "freeCanvas",
   canvas,
@@ -330,6 +337,7 @@ const ctx: CanvasContext = {
   artStyles: computed(() => artStyles.value),
   setArtStyle: canvas.setArtStyle,
   captureFrame: (key, at) => void captureFrame(key, at),
+  openCrop,
   openCreateState,
   openVoice,
   openSaveToAssets: (key) => {

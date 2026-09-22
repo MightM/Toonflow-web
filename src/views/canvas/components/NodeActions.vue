@@ -10,6 +10,9 @@
       <button :disabled="!src"><i-screenshot-one size="14" />截帧<i-down size="12" /></button>
     </t-dropdown>
     <span v-if="ctx.captureFrame && dto.kind === 'video'" class="sep" />
+    <t-tooltip v-if="(dto.kind === 'image' || isAsset) && ctx.openCrop" content="裁剪图片（裁出的图作为新版本）">
+      <button class="icon" aria-label="裁剪" :disabled="!src" @click="ctx.openCrop?.(dto.key)"><i-cutting-one size="15" /></button>
+    </t-tooltip>
     <t-tooltip content="上传本地文件作为新版本">
       <button class="icon" aria-label="上传" @click="ctx.uploadTo(dto.key)"><i-upload size="15" /></button>
     </t-tooltip>

@@ -39,6 +39,8 @@ export interface CanvasContext {
   setArtStyle?: (key: string, stylePath: string | null) => Promise<unknown>;
   /** 视频截帧：把当前帧 / 首帧 / 尾帧截成新的图片节点；不提供时操作条上没有这个按钮 */
   captureFrame?: (key: string, at: FrameAt) => void;
+  /** 裁剪当前图片（拖裁剪框），裁出的图作为该节点的新版本；不提供时操作条上没有这个按钮 */
+  openCrop?: (key: string) => void;
   /** 存入资产库。无限画布没有资产库概念，不提供时操作条上不显示这个按钮 */
   openSaveToAssets?: (key: string) => void;
   openPreview: (src: string, kind: "image" | "video" | "audio") => void;

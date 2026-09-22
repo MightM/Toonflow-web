@@ -15,7 +15,8 @@ export type UndoOp =
   | { type: "reorder"; target: string; order: string[] } // 撤销调序
   | { type: "delete"; key: string } // 撤销新建
   | { type: "restore"; trashId: number } // 撤销删除（从回收站恢复）
-  | { type: "update"; key: string; name?: string; assetType?: AssetType | null; params?: Record<string, unknown> }; // 撤销改名 / 改类型 / 改参数（音色、画风）
+  | { type: "update"; key: string; name?: string; assetType?: AssetType | null; params?: Record<string, unknown> } // 撤销改名 / 改类型 / 改参数（音色、画风）
+  | { type: "version"; key: string; imageId: number }; // 撤销裁剪 / 换版本：把当前版本切回去（裁出的版本留在历史里）
 
 interface UndoEntry {
   label: string;
@@ -45,6 +46,7 @@ const renameOp = (op: UndoOp, map: Record<string, string>): UndoOp => {
       return { ...op, target: r(op.target), order: op.order.map(r) };
     case "delete":
     case "update":
+    case "version":
       return { ...op, key: r(op.key) };
     default:
       return op;
@@ -105,6 +107,9 @@ export function useCanvasHistory(deps: HistoryDeps) {
         return (await canvasApi.restoreNode(projectId, op.trashId)).keyMap;
       case "update":
         await canvasApi.updateNode({ projectId, key: op.key, name: op.name, assetType: op.assetType, params: op.params });
+        return {};
+      case "version":
+        await canvasApi.setCurrentVersion(projectId, op.key, op.imageId);
         return {};
     }
   }

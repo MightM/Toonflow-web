@@ -28,9 +28,16 @@ const CLICK_SLOP = 4;
 export type Point = { x: number; y: number };
 const PASTE_OFFSET = 40; // 粘贴 / 连续粘贴时相对原位置的错位
 const CLIPBOARD_KEY = "toonflow.canvas.clipboard"; // 存 sessionStorage：两张画布之间、刷新之后都能粘
+// 复制节点时往系统剪贴板写一个标记：粘贴时系统剪贴板里还是这个标记 → 粘节点；已经是别的东西（文字 / 文件）→ 粘那个
+const CLIPBOARD_MARK = "toonflow:canvas-nodes:";
+const COPY_MARK_WINDOW = 1000; // ⌘C keydown 之后多久内的 copy 事件算同一次复制
+const PASTED_NAME_LIMIT = 20;
 interface ClipboardData {
   projectId: number;
   items: { key: string; position: Point }[];
+  token: string;
+  /** 标记是否已写进系统剪贴板（写不进去时以内部剪贴板为准） */
+  marked: boolean;
 }
 export type UploadLink = { link?: LinkSpec; position: Point } | null;
 
@@ -188,11 +195,24 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
       // 拿不到存储时只在本次生效
     }
   };
+  let pendingMark: { token: string; at: number } | null = null;
   function copySelection() {
     const items = getSelectedNodes.value.map((n) => ({ key: n.id, position: { x: Math.round(n.position.x), y: Math.round(n.position.y) } }));
     if (!items.length) return;
-    writeClipboard({ projectId: projectId.value, items });
+    const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    writeClipboard({ projectId: projectId.value, items, token, marked: false });
+    pendingMark = { token, at: Date.now() }; // 紧随其后的 copy 事件把标记写进系统剪贴板
     window.$message.success(items.length > 1 ? `已复制 ${items.length} 个节点` : "已复制节点");
+  }
+  // ⌘C 的 keydown 不拦默认行为，让浏览器接着发 copy 事件：这里才能往系统剪贴板写东西（不需要权限，http 下也能用）
+  function onCopy(event: ClipboardEvent) {
+    const mark = pendingMark;
+    pendingMark = null;
+    if (!mark || Date.now() - mark.at > COPY_MARK_WINDOW || !event.clipboardData) return;
+    event.clipboardData.setData("text/plain", CLIPBOARD_MARK + mark.token);
+    event.preventDefault();
+    const data = readClipboard();
+    if (data?.token === mark.token) writeClipboard({ ...data, marked: true });
   }
   async function pasteClipboard() {
     const data = readClipboard();
@@ -200,7 +220,62 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     const shifted = data.items.map((i) => ({ key: i.key, position: { x: i.position.x + PASTE_OFFSET, y: i.position.y + PASTE_OFFSET } }));
     const keys = await duplicateTo(shifted, data.projectId === projectId.value ? null : data.projectId);
     // 连续粘贴逐次错开
-    if (keys?.length) writeClipboard({ projectId: data.projectId, items: shifted });
+    if (keys?.length) writeClipboard({ ...data, items: shifted });
+  }
+  /** 系统剪贴板粘贴：文件（图片 / 视频 / 音频）→ 上传成节点；文字 → 文本节点；还是复制节点时留下的标记 → 粘节点 */
+  function onPaste(event: ClipboardEvent) {
+    if (isTyping(event.target) || anyDialogOpen()) return;
+    const data = event.clipboardData;
+    if (!data) return;
+    const files = [...data.files];
+    const text = data.getData("text/plain").trim();
+    const internal = readClipboard();
+    if (files.length) {
+      event.preventDefault();
+      return void pasteFiles(files);
+    }
+    // 内部剪贴板有节点，且系统剪贴板还是我们的标记（或标记没写成、或是空的）→ 粘节点
+    if (internal?.items.length && (text === CLIPBOARD_MARK + internal.token || !internal.marked || !text)) {
+      event.preventDefault();
+      return void pasteClipboard();
+    }
+    if (text) {
+      event.preventDefault();
+      void pasteText(text);
+    }
+  }
+  const supportedPaste = (file: File) => /^(image|video|audio)\//.test(file.type);
+  async function pasteFiles(files: File[]) {
+    const usable = files.filter(supportedPaste);
+    if (!usable.length) return void window.$message.warning("剪贴板里的文件不是图片 / 视频 / 音频");
+    const center = viewportCenter();
+    const keys: string[] = [];
+    for (const [i, file] of usable.entries()) {
+      const key = await uploadFile(file, null, { x: Math.round(center.x + i * PASTE_OFFSET), y: Math.round(center.y + i * PASTE_OFFSET) }, undefined, pastedName(file));
+      if (key) keys.push(key);
+    }
+    if (keys.length) selectKeys(keys);
+  }
+  /** 截图 / 剪贴板图片的文件名多半是 image.png 这种，给个看得懂的名字 */
+  function pastedName(file: File) {
+    const base = file.name.replace(/\.[^.]+$/, "");
+    if (base && !/^(image|blob|clipboard|screenshot|unknown)$/i.test(base)) return base;
+    const kind = file.type.startsWith("video/") ? "视频" : file.type.startsWith("audio/") ? "音频" : "图片";
+    const now = new Date();
+    return `粘贴的${kind} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  }
+  async function pasteText(text: string) {
+    const firstLine = text.split(/\r?\n/).find((line) => line.trim())?.trim() ?? "文本";
+    const name = firstLine.length > PASTED_NAME_LIMIT ? `${firstLine.slice(0, PASTED_NAME_LIMIT)}…` : firstLine;
+    const center = viewportCenter();
+    const key = await canvas.run(async () => {
+      const created = await canvasApi.createNode(projectId.value, "text", { x: Math.round(center.x), y: Math.round(center.y) }, name, undefined, text);
+      canvas.recordCreated(created.key, "粘贴文本");
+      await canvas.refresh();
+      window.$message.success("已把剪贴板文字放进文本节点");
+      return created.key;
+    }, "粘贴文本失败");
+    if (key) selectOnly(key);
   }
   async function duplicateTo(items: { key: string; position: Point }[], sourceProjectId?: number | null) {
     const keys = await canvas.duplicateNodes(items, sourceProjectId);
@@ -331,10 +406,10 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
       fileInput.value.click();
     }
   }
-  async function uploadFile(file: File, target: string | null, position?: Point, link?: LinkSpec) {
+  async function uploadFile(file: File, target: string | null, position?: Point, link?: LinkSpec, displayName?: string) {
     return canvas.run(async () => {
       const base64Data = await readAsDataUrl(file);
-      const name = file.name.replace(/\.[^.]+$/, "");
+      const name = displayName ?? file.name.replace(/\.[^.]+$/, "");
       const created = await canvasApi.upload({ projectId: projectId.value, base64Data, name, target, position });
       if (!target) {
         if (link) await canvasApi.addEdge(projectId.value, link.role === "source" ? link.key : created.key, link.role === "source" ? created.key : link.key);
@@ -358,6 +433,32 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     const files = [...(event.dataTransfer?.files ?? [])];
     const position = screenToFlowCoordinate({ x: event.clientX, y: event.clientY });
     files.forEach((file, i) => void uploadFile(file, null, { x: position.x + i * 40, y: position.y + i * 40 }));
+  }
+
+  // ─── 裁剪（图片节点 / 资产当前图）────────────────────────
+  const cropVisible = ref(false);
+  const cropKey = ref<string | null>(null);
+  const cropDto = computed(() => (cropKey.value ? canvas.dtoByKey.value.get(cropKey.value) : undefined));
+  const cropSrc = computed(() => cropDto.value?.current?.src?.replace(/\?size=\d+$/, "") ?? "");
+  const cropName = computed(() => cropDto.value?.name ?? "");
+  function openCrop(key: string) {
+    const dto = canvas.dtoByKey.value.get(key);
+    if (!dto?.current?.src || dto.current.kind !== "image") return void window.$message.warning("这个节点还没有图片");
+    cropKey.value = key;
+    cropVisible.value = true;
+  }
+  /** CropDialog 裁好后：作为该节点的新版本上传，撤销时切回原版本（裁出的图仍留在历史里） */
+  async function applyCrop(payload: { base64Data: string; width: number; height: number }) {
+    const key = cropKey.value;
+    const dto = key ? canvas.dtoByKey.value.get(key) : undefined;
+    if (!key || !dto) return;
+    const previous = dto.current?.imageId;
+    await canvas.run(async () => {
+      await canvasApi.upload({ projectId: projectId.value, base64Data: payload.base64Data, target: key });
+      if (previous) canvas.recordVersion(key, previous, `裁剪「${dto.name}」`);
+      await canvas.refresh();
+      window.$message.success(`已裁剪为 ${payload.width} × ${payload.height}，原图在历史版本里，按 ${UNDO_HINT} 切回`);
+    }, "裁剪失败");
   }
 
   // ─── 预览 / 历史抽屉 ─────────────────────────────────
@@ -427,7 +528,8 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
   const clearSelection = () => removeSelectedElements();
 
   // ─── 键盘 ────────────────────────────────────────────
-  const anyDialogOpen = () => historyVisible.value || preview.visible || voiceVisible.value || !!connectMenu.value || !!options.extraDialogOpen?.();
+  const anyDialogOpen = () =>
+    historyVisible.value || preview.visible || voiceVisible.value || cropVisible.value || !!connectMenu.value || !!options.extraDialogOpen?.();
   function isTyping(target: EventTarget | null) {
     const el = target as HTMLElement | null;
     return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || !!el.closest(".t-dialog, .t-drawer, .t-popup"));
@@ -447,7 +549,7 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     }
     return false;
   }
-  /** V / H 切工具、Esc 取消选中、⌘/Ctrl + A 全选、⌘/Ctrl + C / V 复制粘贴 */
+  /** V / H 切工具、Esc 取消选中、⌘/Ctrl + A 全选、⌘/Ctrl + C 复制（粘贴走 paste 事件，见 onPaste） */
   function handleSelectionKeys(event: KeyboardEvent): boolean {
     const mod = event.metaKey || event.ctrlKey;
     const plain = !mod && !event.altKey && !event.shiftKey;
@@ -456,8 +558,8 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     if (plain && key === "h") return setTool("pan"), true;
     if (plain && event.key === "Escape") return clearSelection(), true;
     if (mod && !event.altKey && !event.shiftKey && key === "a") return selectAll(), true;
-    if (mod && !event.altKey && !event.shiftKey && key === "c") return copySelection(), true;
-    if (mod && !event.altKey && !event.shiftKey && key === "v") return void pasteClipboard(), true;
+    // 复制不拦默认行为：让浏览器接着发 copy 事件，标记才写得进系统剪贴板
+    if (mod && !event.altKey && !event.shiftKey && key === "c") return copySelection(), false;
     return false;
   }
   function onKeydown(event: KeyboardEvent) {
@@ -495,12 +597,16 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     window.addEventListener("keydown", onSpace, true);
     window.addEventListener("keyup", onSpace, true);
     window.addEventListener("blur", releaseSpace);
+    window.addEventListener("copy", onCopy, true);
+    window.addEventListener("paste", onPaste, true);
   });
   onBeforeUnmount(() => {
     window.removeEventListener("keydown", onKeydown, true);
     window.removeEventListener("keydown", onSpace, true);
     window.removeEventListener("keyup", onSpace, true);
     window.removeEventListener("blur", releaseSpace);
+    window.removeEventListener("copy", onCopy, true);
+    window.removeEventListener("paste", onPaste, true);
   });
 
   return {
@@ -549,6 +655,11 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     uploadFile,
     onFilePicked,
     onDrop,
+    cropVisible,
+    cropSrc,
+    cropName,
+    openCrop,
+    applyCrop,
     historyVisible,
     historyTarget,
     openHistory,

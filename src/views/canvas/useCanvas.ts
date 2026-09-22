@@ -383,6 +383,10 @@ export function useCanvas(projectId: Ref<number>, scriptId: Ref<number | null>, 
   function recordCreated(key: string, label: string) {
     history.record(label, [{ type: "delete", key }]);
   }
+  /** 裁剪等产生新版本的操作：撤销时把当前版本切回原来的 imageId */
+  function recordVersion(key: string, previousImageId: number, label: string) {
+    history.record(label, [{ type: "version", key, imageId: previousImageId }]);
+  }
 
   /** 删除节点（可多个）与连线；删除进回收站，撤销时恢复 */
   async function deleteSelection(keys: string[], edgeIds: number[] = []) {
@@ -457,6 +461,7 @@ export function useCanvas(projectId: Ref<number>, scriptId: Ref<number | null>, 
     duplicateNodes,
     applyPositions,
     recordCreated,
+    recordVersion,
     recordMove,
     positionsOf,
     deleteSelection,
