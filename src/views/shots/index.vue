@@ -701,9 +701,10 @@ watch(projectId, () => {
   flex: 1;
   min-height: 0;
 }
+// 预览区与右侧面板默认 1:1（镜头多为竖屏，预览不必占太宽）
 .stage {
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
   flex-direction: column;
   align-items: center;
   gap: 8px;
@@ -799,7 +800,7 @@ watch(projectId, () => {
 .desc-hint {
   margin: 0 0 8px;
   color: var(--td-text-color-placeholder);
-  font-size: 12px;
+  font-size: 13px;
   line-height: 1.6;
 }
 // 描述和素材板一起滚，操作行钉在底部
@@ -813,8 +814,9 @@ watch(projectId, () => {
 .desc-input {
   flex: none;
   :deep(textarea) {
-    height: 160px;
+    height: 200px;
     resize: vertical;
+    font-size: 15px;
     line-height: 1.9;
   }
 }
@@ -827,8 +829,10 @@ watch(projectId, () => {
 .panel {
   display: flex;
   flex-direction: column;
-  width: 420px;
+  flex: 1 1 0;
   min-width: 420px;
+  // 右侧面板字号整体放大，方便浏览
+  font-size: 14px;
   border-left: 1px solid var(--td-component-stroke);
   background: var(--td-bg-color-container);
 }
@@ -885,12 +889,36 @@ watch(projectId, () => {
   border: none;
   background: transparent;
   box-shadow: none;
-  // 画布上提示词框是固定 180px 的小格子，这里让它占满参考条与操作行之外的全部高度
+  // 画布上提示词框是固定 180px 的小格子，这里让它占满参考条与操作行之外的全部高度；字号也放大
   .prompt {
     flex: 1;
     min-height: 120px;
     max-height: none;
+    font-size: 15px;
+    line-height: 2;
   }
+  .ref-strip,
+  .ref-chip,
+  .controls,
+  .h3-hint,
+  .polished,
+  .warning,
+  .blocked,
+  .sub-actions {
+    font-size: 13px;
+  }
+}
+// 素材板与视频版本带的字也放大一档
+.panel-body :deep(.ref-board) {
+  font-size: 13px;
+  .cap,
+  .group-name,
+  .name {
+    font-size: 12px;
+  }
+}
+.take {
+  font-size: 13px;
 }
 .panel-foot {
   display: flex;

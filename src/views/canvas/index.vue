@@ -69,6 +69,9 @@
       <t-tooltip content="从资产库导入" placement="top"><button aria-label="从资产库导入" @click="openLibrary"><i-box size="20" /></button></t-tooltip>
       <t-tooltip content="查看历史" placement="top"><button aria-label="查看历史" @click="openHistory(null)"><i-history size="20" /></button></t-tooltip>
       <span class="rule" />
+      <t-tooltip :content="emptyPromptAssets.length ? `推理 ${emptyPromptAssets.length} 个还没有提示词的资产` : '所有资产都有提示词了'" placement="top">
+        <button aria-label="推理空提示词" :disabled="!emptyPromptAssets.length" @click="polishEmptyPrompts"><i-magic-wand size="20" /></button>
+      </t-tooltip>
       <t-tooltip content="资产模型绑定" placement="top"><button aria-label="资产模型绑定" @click="modelsVisible = true"><i-setting-two size="20" /></button></t-tooltip>
       <t-tooltip content="重新整理布局" placement="top"><button aria-label="重新整理布局" @click="relayout"><i-tree-diagram size="20" /></button></t-tooltip>
     </nav>
@@ -135,6 +138,7 @@ import { canvasApi, readAsDataUrl } from "./api";
 import { CANVAS_CTX, type CanvasContext } from "./context";
 import { useCanvas, confirmDialog, type CanvasNode } from "./useCanvas";
 import { MENU_NODE_WIDTH, MULTI_SELECT_KEYS, UNDO_HINT, useCanvasInteractions } from "./useCanvasInteractions";
+import { isAssetNode } from "./types";
 import { useFrameCapture } from "./useFrameCapture";
 import type { CanvasPreset, MediaKind } from "./types";
 
@@ -296,6 +300,35 @@ async function openLibrary() {
     await focusNode(focus);
   }
 }
+
+// ─── 一键推理：流水线拆出来的资产只有描述，没有提示词 ─────────────────
+const emptyPromptAssets = computed(() =>
+  [...canvas.dtoByKey.value.values()].filter((d) => isAssetNode(d) && !(d.prompt ?? "").trim() && d.promptState !== "生成中"),
+);
+async function polishEmptyPrompts() {
+  const targets = emptyPromptAssets.value.filter(isAssetNode);
+  if (!targets.length) return;
+  const ok = await confirmDialog(`为 ${targets.length} 个还没有提示词的资产推理提示词？按项目画风的视觉手册从资产描述写出，完成后可在节点上再改。`);
+  if (!ok) return;
+  const items = targets.map((a) => ({ assetsId: a.id, type: a.assetType, name: a.name, describe: a.describe || a.name }));
+  await canvas.run(async () => {
+    await axios.post("/assetsGenerate/batchPolishAssetsPrompt", { projectId: projectId.value, items, concurrentCount: 5, otherTextPrompt: "" });
+    window.$message.success(`已开始推理 ${items.length} 个资产的提示词`);
+    await canvas.refresh();
+    pollPromptState();
+  }, "推理失败");
+}
+// 批量推理是后台任务：promptState 从「生成中」变回来之前每 3 秒刷新
+let promptTimer: ReturnType<typeof setInterval> | undefined;
+function pollPromptState() {
+  clearInterval(promptTimer);
+  promptTimer = setInterval(async () => {
+    await canvas.refresh();
+    const busy = [...canvas.dtoByKey.value.values()].some((d) => isAssetNode(d) && d.promptState === "生成中");
+    if (!busy) clearInterval(promptTimer);
+  }, 3000);
+}
+onBeforeUnmount(() => clearInterval(promptTimer));
 
 // ─── 新建状态 ────────────────────────────────────────
 function openCreateState(key: string) {

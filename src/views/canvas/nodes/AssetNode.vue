@@ -4,6 +4,7 @@
     <header class="head">
       <TypeTag :dto="dto" />
       <NodeTitle :node-key="dto.key" :dto-name="dto.name" />
+      <span v-if="inferring" class="inferring" title="正在推理提示词"><t-loading size="small" />推理中</span>
       <span v-if="data.refCount" class="ref-count" :title="`${data.refCount} 个参考`"><i-link-one size="11" />{{ data.refCount }}</span>
     </header>
 
@@ -35,6 +36,7 @@ import { Handle, Position } from "@vue-flow/core";
 import { NodeToolbar } from "@vue-flow/node-toolbar";
 import NodeActions from "../components/NodeActions.vue";
 import BusyOverlay from "../components/BusyOverlay.vue";
+import { isPolishing } from "../polishJobs";
 import NodeComposer from "../components/NodeComposer.vue";
 import NodeTitle from "../components/NodeTitle.vue";
 import TypeTag from "../components/TypeTag.vue";
@@ -47,6 +49,7 @@ const ctx = useCanvasCtx();
 const dto = computed(() => props.data.dto as AssetNodeDto);
 const isRole = computed(() => dto.value.assetType === "role");
 const failed = computed(() => dto.value.latest?.state === "生成失败");
+const inferring = computed(() => isPolishing(dto.value.key) || dto.value.promptState === "生成中");
 const busy = computed(() => dto.value.pendingImageIds.length > 0 && dto.value.latest?.state === "生成中");
 
 function preview() {
@@ -95,6 +98,16 @@ function preview() {
   margin-bottom: 6px;
   padding: 0 2px;
   cursor: grab;
+}
+.inferring {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--td-brand-color);
+  background: var(--td-brand-color-light);
 }
 .ref-count {
   display: inline-flex;

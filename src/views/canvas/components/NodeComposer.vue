@@ -33,6 +33,16 @@
       <button v-if="ctx.openRefPicker" class="ref-add" title="添加参考素材" @click="ctx.openRefPicker(props.dto.key)"><i-plus size="12" />参考</button>
     </div>
 
+    <!-- 流水线拆出来的资产只有描述没有提示词：把描述亮出来，并指明下一步 -->
+    <div v-if="needsInfer" class="infer-hint">
+      <i-magic-wand size="14" />
+      <div class="text">
+        <b>还没有提示词</b>
+        <span v-if="asset?.describe">资产描述：{{ asset.describe }}</span>
+        <span>点「推理提示词」按视觉手册把描述写成完整需求，改好后再生成；也可以直接在下面手写。</span>
+      </div>
+      <t-button size="small" theme="primary" :loading="polishing" @click="polish">推理提示词</t-button>
+    </div>
     <PromptEditor v-model="prompt" class="prompt" :class="{ tall: polishedBy }" :references="editorRefs" :placeholder="placeholder" />
 
     <div class="controls">
@@ -112,6 +122,7 @@ import { canvasApi, errorMessage } from "../api";
 import { TYPE_LABEL, useCanvasCtx } from "../context";
 import { useComposerWheel } from "../composerWheel";
 import { getDraft, saveDraft } from "../composerDrafts";
+import { isPolishing, onPolishDone, runPolish } from "../polishJobs";
 import RatioPopover from "./RatioPopover.vue";
 import PresetPicker from "./PresetPicker.vue";
 import StyleChip from "./StyleChip.vue";
@@ -180,7 +191,7 @@ const params = computed(() => (!isAssetNode(props.dto) ? ((props.dto as MediaNod
 const presetId = ref<string | null>(null);
 const preset = computed(() => availablePresets.value.find((p) => p.id === presetId.value) ?? null);
 const canPolish = computed(() => (isVideo.value ? !!model.value : !!preset.value?.canPolish));
-const polishLabel = computed(() => ctx.polishLabel?.(isVideo.value) ?? "优化");
+const polishLabel = computed(() => ctx.polishLabel?.(isVideo.value) ?? (needsInfer.value ? "推理提示词" : "优化"));
 const polishTip = computed(() =>
   isVideo.value
     ? "按视频模型绑定的官方提示词模板（如 MiniMax H3 多参考六字段格式），结合连入的参考素材把简短描述改写成完整提示词"
@@ -421,6 +432,7 @@ function moveRef(index: number, delta: number) {
 
 const placeholder = computed(() => {
   if (isVideo.value) return "描述镜头内容与运动，输入 @ 引用连入的素材";
+  if (needsInfer.value) return "点上方「推理提示词」自动写出，或在这里手写需求";
   if (preset.value?.hint) return preset.value.hint;
   return "描述画面内容，输入 @ 引用连入的素材";
 });
@@ -520,22 +532,29 @@ async function generate() {
   }
 }
 
-const polishing = ref(false);
+// 推理 / 优化任务跨面板存活（polishJobs）：切到别的节点再回来，结果照样在
+const polishing = computed(() => isPolishing(props.dto.key));
 const undoText = ref<string | null>(null);
+// 资产还没有提示词（流水线只拆出了描述）：提示用户先推理
+const needsInfer = computed(() => !!asset.value && !isVideo.value && !prompt.value.trim() && canPolish.value);
 async function polish() {
   if (isVideo.value) return polishVideo();
   if (!preset.value) return;
-  polishing.value = true;
-  try {
-    const res = await canvasApi.polishPreset({ projectId: ctx.projectId.value, presetId: preset.value.id, text: prompt.value, nodeKey: props.dto.key, artStyle: artStyle.value });
-    undoText.value = prompt.value;
-    prompt.value = res.text;
-  } catch (e) {
-    window.$message.error(errorMessage(e, "优化失败，请检查「通用 AI」文本模型配置"));
-  } finally {
-    polishing.value = false;
-  }
+  const presetId = preset.value.id;
+  const text = prompt.value;
+  void runPolish(ctx.projectId.value, props.dto.key, text, async () => {
+    const res = await canvasApi.polishPreset({ projectId: ctx.projectId.value, presetId, text, nodeKey: props.dto.key, artStyle: artStyle.value });
+    return { text: res.text };
+  });
 }
+// 结果回来时面板还挂着：直接填进编辑框（面板已卸载的情况由草稿在下次打开时恢复）
+const stopPolishListener = onPolishDone(props.dto.key, (result, before) => {
+  undoText.value = before;
+  prompt.value = result.text;
+  polishedBy.value = result.polishedBy ?? "";
+  void ctx.refresh();
+});
+onBeforeUnmount(stopPolishListener);
 function undoPolish() {
   if (undoText.value === null) return;
   prompt.value = undoText.value;
@@ -546,24 +565,12 @@ function undoPolish() {
 // ─── 视频：按模型绑定的官方模板优化，用户确认后再生成 ─────────────────
 const polishedBy = ref(""); // 优化所用的规则文件名；用户改了文本也保留，生成后清空
 async function polishVideo() {
-  polishing.value = true;
-  try {
-    const res = await canvasApi.polishVideoPrompt({
-      projectId: ctx.projectId.value,
-      nodeKey: props.dto.key,
-      model: model.value,
-      text: prompt.value,
-      duration: duration.value,
-      aspectRatio: ratio.value === "9:16" ? "9:16" : "16:9",
-    });
-    undoText.value = prompt.value;
-    prompt.value = res.text;
-    polishedBy.value = res.rules.replace(/\.md$/, "");
-  } catch (e) {
-    window.$message.error(errorMessage(e, "优化失败，请检查「通用 AI」文本模型配置"));
-  } finally {
-    polishing.value = false;
-  }
+  const text = prompt.value;
+  const body = { projectId: ctx.projectId.value, nodeKey: props.dto.key, model: model.value, text, duration: duration.value, aspectRatio: ratio.value === "9:16" ? ("9:16" as const) : ("16:9" as const) };
+  void runPolish(ctx.projectId.value, props.dto.key, text, async () => {
+    const res = await canvasApi.polishVideoPrompt(body);
+    return { text: res.text, polishedBy: res.rules.replace(/\.md$/, "") };
+  });
 }
 // 优化后换了模型或参考：编号 / 格式可能对不上了，撤掉「已确认」状态并提醒重新优化
 watch([model, () => refs.value.map((r) => r.key).join(",")], () => {
@@ -635,6 +642,28 @@ onBeforeUnmount(flushDraft);
   > :not(.controls) {
     width: 0;
     min-width: 100%;
+  }
+}
+.infer-hint {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px dashed color-mix(in srgb, var(--td-brand-color) 60%, transparent);
+  background: var(--td-brand-color-light);
+  color: var(--td-text-color-primary);
+  font-size: 12px;
+  .text {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    span {
+      color: var(--td-text-color-secondary);
+      line-height: 1.5;
+    }
   }
 }
 .auto-line {

@@ -12,6 +12,7 @@
         <span>{{ style.name }}</span>
       </span>
       <NodeTitle :node-key="dto.key" :dto-name="dto.name" />
+      <span v-if="inferring" class="inferring" title="正在推理提示词"><t-loading size="small" />推理中</span>
       <span v-if="data.refCount" class="ref-count"><i-link-one size="11" />{{ data.refCount }}</span>
     </header>
     <!-- 文本节点：就地编辑的便签，内容存在 prompt 里，失焦或停笔 400ms 保存 -->
@@ -61,6 +62,7 @@ import TypeTag from "../components/TypeTag.vue";
 import AudioPlayer from "../components/AudioPlayer.vue";
 import VideoPlayer from "../components/VideoPlayer.vue";
 import BusyOverlay from "../components/BusyOverlay.vue";
+import { isPolishing } from "../polishJobs";
 import { artStyleOf } from "../types";
 import { TYPE_LABEL, useCanvasCtx } from "../context";
 import type { FlowNodeData, MediaNodeDto } from "../types";
@@ -105,6 +107,7 @@ function scheduleSave() {
 onBeforeUnmount(() => clearTimeout(saveTimer));
 const busy = computed(() => dto.value.pendingImageIds.length > 0 && dto.value.latest?.state === "生成中");
 const failed = computed(() => dto.value.latest?.state === "生成失败");
+const inferring = computed(() => isPolishing(dto.value.key));
 const style = computed(() => {
   const stylePath = artStyleOf(dto.value);
   return stylePath ? (ctx.artStyles?.value.find((s) => s.stylePath === stylePath) ?? { stylePath, name: stylePath, cover: null }) : null;
@@ -185,6 +188,16 @@ function preview() {
     white-space: nowrap;
     text-overflow: ellipsis;
   }
+}
+.inferring {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  color: var(--td-brand-color);
+  background: var(--td-brand-color-light);
 }
 .ref-count {
   display: inline-flex;
