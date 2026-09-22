@@ -83,7 +83,7 @@ export interface AssetModelBinding {
   model: string;
   aspectRatio: string;
 }
-export type AssetModelKey = "roleSheet" | "roleSheetRef" | "roleDerive" | "scene" | "sceneDerive" | "prop" | "propDerive";
+export type AssetModelKey = "roleSheet" | "roleSheetRef" | "roleDerive" | "scene" | "sceneRef" | "sceneDerive" | "prop" | "propRef" | "propDerive";
 export type AssetModels = Record<AssetModelKey, AssetModelBinding>;
 
 export interface CanvasLayout {

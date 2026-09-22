@@ -42,6 +42,7 @@ import { MdEditor, MdPreview } from "md-editor-v3";
 import type { ToolbarNames } from "md-editor-v3";
 import settingStore from "@/stores/setting";
 import productionAgentStore from "@/stores/productionAgent";
+import axios from "@/utils/axios";
 const { themeSetting } = storeToRefs(settingStore());
 
 const props = defineProps<{
@@ -85,10 +86,26 @@ function openEdit() {
   dialogVisible.value = true;
 }
 
-function onConfirm() {
+// 剧本正文的权威表是 o_script，不是 flowData 快照：setFlowData 只写 o_agentWorkData，
+// 而 getFlowData 每次都用 o_script.content 覆盖 flowData.script，所以只存快照的话刷新就丢，
+// 剧本 Agent 的剧本 Tab 和视频提示词也永远看不到这次修改。这里先写回 o_script 再存快照。
+// 只在用户点「保存」时写，不放进 setFlowData——否则画布上任何别的操作都会把内存里
+// 可能已经过期的剧本推回库里，反过来把剧本 Agent 那边的新内容冲掉。
+async function onConfirm() {
+  const store = productionAgentStore();
+  const scriptId = store.episodesId;
+  if (!scriptId) {
+    window.$message.error("没有当前剧集，无法保存剧本");
+    return;
+  }
+  try {
+    await axios.post("/script/updateScript", { id: scriptId, content: editContent.value });
+  } catch (e) {
+    window.$message.error("剧本保存失败，请重试");
+    return;
+  }
   script.value = editContent.value;
-  productionAgentStore().setFlowData();
-
+  store.setFlowData();
   dialogVisible.value = false;
 }
 

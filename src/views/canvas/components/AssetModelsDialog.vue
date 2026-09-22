@@ -42,9 +42,11 @@ const ROWS: { key: AssetModelKey; label: string; desc: string }[] = [
   { key: "roleSheet", label: "角色多视图（无参考）", desc: "直接按人物需求文生多视图，如 Krea2 文生图" },
   { key: "roleSheetRef", label: "角色多视图（有参考图）", desc: "连入定妆照等参考图后，以它为身份参考生成多视图" },
   { key: "roleDerive", label: "角色衍生", desc: "换装/变身：以父角色多视图为参考生成新的多视图，如 Krea2 单图编辑" },
-  { key: "scene", label: "场景", desc: "基础场景图" },
+  { key: "scene", label: "场景（无参考）", desc: "基础场景图，直接按需求文生图" },
+  { key: "sceneRef", label: "场景（有参考图）", desc: "连入截图或照片后，照它的样式重画场景，按目标尺寸出图" },
   { key: "sceneDerive", label: "场景状态", desc: "时段/状态变体，以场景主图为参考" },
-  { key: "prop", label: "道具", desc: "基础道具图" },
+  { key: "prop", label: "道具（无参考）", desc: "基础道具图，直接按需求文生图" },
+  { key: "propRef", label: "道具（有参考图）", desc: "连入截图或照片后，照它的样式重画道具，按目标尺寸出图" },
   { key: "propDerive", label: "道具使用状态", desc: "以道具主图为参考" },
 ];
 
