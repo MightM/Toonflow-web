@@ -269,8 +269,7 @@ function preview() {
   gap: 3px;
   padding: 6px 10px;
   border-radius: 0 0 8px 8px;
-  background: color-mix(in srgb, var(--td-bg-color-container) 82%, transparent);
-  backdrop-filter: blur(4px);
+  background: color-mix(in srgb, var(--td-bg-color-container) 92%, transparent);
   font-size: 11px;
   overflow: hidden;
   white-space: nowrap;

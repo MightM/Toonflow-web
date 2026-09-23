@@ -997,7 +997,11 @@
       },
       "confirmCancellation": "確定取消",
       "confirmAgain": "確認取消嗎？\n取消之後後台AI會繼續調取扣費",
-      "sure": "確定"
+      "sure": "確定",
+      "replaceImage": "換圖",
+      "replaceImageTip": "換圖：上傳本機圖片替換目前的圖，舊圖留在歷史版本裡",
+      "replaceSuccess": "「{name}」已換圖，舊圖在歷史版本裡",
+      "replaceFail": "換圖失敗"
     },
     "production": {
       "selectPlaceholder": "請選擇劇集",

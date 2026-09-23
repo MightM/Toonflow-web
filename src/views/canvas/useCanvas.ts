@@ -421,6 +421,12 @@ export function useCanvas(projectId: Ref<number>, scriptId: Ref<number | null>, 
 
   /** 删一个节点，返回回收站 id；已被分镜引用时先确认，取消返回 null */
   async function deleteOne(key: string): Promise<number | null> {
+    // 从剧本正文提取出来的人物 / 场景 / 道具：先二次确认（删了分镜和视频就没有这个参考了；24 小时内可在回收站恢复）
+    const dto = dtoByKey.value.get(key);
+    if (dto && isAssetNode(dto) && dto.inScript) {
+      const ok = await confirmDialog(`「${dto.name}」是剧本正文中出现的${TYPE_NAME[dto.assetType] ?? "资产"}，确认删除？删除后分镜和视频会失去这个参考，24 小时内可在回收站恢复。`);
+      if (!ok) return null;
+    }
     try {
       return (await canvasApi.deleteNode(projectId.value, key)).trashId;
     } catch (e) {

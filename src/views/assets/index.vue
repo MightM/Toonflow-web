@@ -122,6 +122,12 @@
                             </template>
                             {{ $t("workbench.assets.generate") }}
                           </t-button>
+                          <t-button theme="primary" variant="text" :disabled="isGenerating(subRow.id)" @click="replaceImage(subRow)">
+                            <template #icon>
+                              <t-icon name="upload" />
+                            </template>
+                            {{ $t("workbench.assets.replaceImage") }}
+                          </t-button>
                           <t-button theme="primary" variant="text" @click="handleEdit(subRow)">
                             <template #icon>
                               <t-icon name="edit" />
@@ -195,6 +201,12 @@
                         <i-magic :size="18" />
                       </template>
                       {{ $t("workbench.assets.generate") }}
+                    </t-button>
+                    <t-button theme="primary" variant="text" :disabled="isGenerating(row.id)" @click="replaceImage(row)">
+                      <template #icon>
+                        <t-icon name="upload" />
+                      </template>
+                      {{ $t("workbench.assets.replaceImage") }}
                     </t-button>
                     <t-button theme="primary" variant="text" @click="handleEdit(row)">
                       <template #icon>
@@ -440,6 +452,7 @@ import type { TabValue, TableProps } from "tdesign-vue-next";
 import addAssets from "./components/addAssets.vue";
 import addAudioAssets from "./components/addAudioAssets.vue";
 import generateImage from "./components/generateImage.vue";
+import { pickImageFile, replaceAssetImage } from "./replaceImage";
 import projectStore from "@/stores/project";
 import settingStore from "@/stores/setting";
 const { otherSetting } = storeToRefs(settingStore());
@@ -884,7 +897,7 @@ const columns: TableProps["columns"] = [
   {
     colKey: "operation",
     title: $t("workbench.assets.colOperation"),
-    width: 280,
+    width: 360, // 生成 / 换图 / 编辑 / 删除
     align: "center",
     fixed: "right",
     cell: "operation",
@@ -939,7 +952,7 @@ const subColumns: TableProps["columns"] = [
   {
     colKey: "operation",
     title: $t("workbench.assets.colOperation"),
-    width: 280,
+    width: 360, // 生成 / 换图 / 编辑 / 删除
     align: "center",
     fixed: "right",
     cell: "operation",
@@ -1114,6 +1127,18 @@ function generate(row: any) {
     src: row.src,
   };
   generateImageShow.value = true;
+}
+// 换图：选本地图片替换当前图（旧图留在历史版本里，资产与剧情的绑定不变）
+async function replaceImage(row: any) {
+  const file = await pickImageFile();
+  if (!file || !project.value?.id) return;
+  try {
+    await replaceAssetImage(project.value.id, row.id, file);
+    window.$message.success($t("workbench.assets.replaceSuccess", { name: row.name }));
+    await getFilteredData(assetOptions.value);
+  } catch (e) {
+    window.$message.error((e as any)?.message || $t("workbench.assets.replaceFail"));
+  }
 }
 // 编辑
 function handleEdit(row: any) {

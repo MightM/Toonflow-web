@@ -12,6 +12,11 @@
       <div class="cardGrid">
         <div v-for="asset in assets" :key="asset.id" class="assetItemBox">
           <t-card class="assetCard">
+            <t-tooltip theme="primary" :content="$t('workbench.assets.replaceImageTip')">
+              <div class="replace ac" @mousedown.stop @click.stop="replaceFn(asset)">
+                <i-upload-one theme="outline" size="18" fill="#fff" />
+              </div>
+            </t-tooltip>
             <div v-if="asset.src" class="assetImageWrap">
               <t-image :src="asset.src" fit="contain" class="assetImage" :preview="true">
                 <template #overlayContent>
@@ -55,6 +60,11 @@
                 </t-tooltip>
                 <t-empty v-else size="small" :title="$t('workbench.production.node.assets.notGenerated')" />
               </div>
+              <t-tooltip theme="primary" :content="$t('workbench.assets.replaceImageTip')">
+                <div class="replace ac" @mousedown.stop @click.stop="replaceFn(item)">
+                  <i-upload-one theme="outline" size="18" fill="#fff" />
+                </div>
+              </t-tooltip>
               <t-tooltip theme="primary" :content="$t('workbench.production.node.storyboard.deleteNode')">
                 <div class="remove ac" @click.stop="removeFn(item.id!)">
                   <i-delete theme="outline" size="18" fill="#fff" />
@@ -82,6 +92,7 @@
 import { Handle, Position, type Edge } from "@vue-flow/core";
 import { type AssetItem, type DeriveAsset } from "../utils/flowBuilder";
 import axios from "@/utils/axios";
+import { pickImageFile, replaceAssetImage } from "@/views/assets/replaceImage";
 import useProjectStore from "@/stores/project";
 import type { Ref } from "vue";
 const { project } = storeToRefs(useProjectStore());
@@ -97,6 +108,19 @@ const assets = defineModel<AssetItem[]>({ required: true });
 function generateAssetsImage(row: DeriveAsset) {
   const scriptId = canvasEpisodesId?.value;
   canvasRouter.push({ path: "/canvas", query: { ...(scriptId ? { scriptId: String(scriptId) } : {}), focus: `a:${row.id}` } });
+}
+
+// 换图：原资产 / 衍生资产都能选本地图片替换当前图，旧图留在画布的历史版本里
+async function replaceFn(target: AssetItem | DeriveAsset) {
+  const file = await pickImageFile();
+  if (!file || !project.value?.id) return;
+  try {
+    target.src = await replaceAssetImage(project.value.id, target.id, file);
+    target.state = "已完成";
+    window.$message.success($t("workbench.assets.replaceSuccess", { name: target.name }));
+  } catch (e) {
+    window.$message.error((e as any)?.message || $t("workbench.assets.replaceFail"));
+  }
 }
 
 async function removeFn(id: number) {
@@ -185,9 +209,26 @@ function openCanvas() {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
+          position: relative;
           &:hover {
-            .remove {
+            .remove,
+            .replace {
               opacity: 1;
+            }
+          }
+          .replace {
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            z-index: 9999;
+            padding: 5px;
+            border-radius: 10px;
+            background-color: color-mix(in srgb, var(--td-brand-color) 75%, transparent);
+            cursor: pointer;
+            opacity: 0;
+            transition: opacity 150ms;
+            &:hover {
+              background-color: var(--td-brand-color);
             }
           }
           .assetImageWrap {

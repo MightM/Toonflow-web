@@ -1131,7 +1131,11 @@
       },
       "confirmCancellation": "Confirm cancellation",
       "confirmAgain": "Confirm cancellation? \nAfter cancellation, the backend AI will continue to call for deductions.",
-      "sure": "Sure"
+      "sure": "Sure",
+      "replaceImage": "Replace image",
+      "replaceImageTip": "Replace: upload a local image as the current one; the old image stays in version history",
+      "replaceSuccess": "\"{name}\" image replaced; the old one is kept in history",
+      "replaceFail": "Failed to replace image"
     },
     "production": {
       "selectPlaceholder": "Please select an episode",

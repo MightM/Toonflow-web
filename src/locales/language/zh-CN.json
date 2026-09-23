@@ -1228,7 +1228,11 @@
       },
       "confirmCancellation": "确定取消",
       "confirmAgain": "确认取消吗？取消之后后台AI会继续调取扣费",
-      "sure": "确定"
+      "sure": "确定",
+      "replaceImage": "换图",
+      "replaceImageTip": "换图：上传本地图片替换当前图，旧图留在历史版本里",
+      "replaceSuccess": "「{name}」已换图，旧图在历史版本里",
+      "replaceFail": "换图失败"
     },
     "production": {
       "selectPlaceholder": "请选择剧集",

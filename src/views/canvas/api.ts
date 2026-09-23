@@ -1,5 +1,5 @@
 import axios from "@/utils/axios";
-import type { ArtStyleDto, AssetModels, AssetType, CanvasData, CanvasPreset, HistoryItem, ImageSize, MediaKind, VersionDto } from "./types";
+import type { ArtStyleDto, AssetModels, AssetType, CanvasData, CanvasPreset, HistoryItem, ImageSize, MediaKind, TrashItem, VersionDto } from "./types";
 
 // 资产画布接口（/api/canvas/*、/api/setting/assetModels/*）
 interface Envelope<T> {
@@ -72,6 +72,10 @@ export const canvasApi = {
   createAsset: (body: { projectId: number; type: "role" | "scene" | "tool"; name: string; describe?: string; scriptId?: number | null; position?: { x: number; y: number } }) =>
     post<{ key: string; id: number }>("/canvas/createAsset", body),
   deleteNode: (projectId: number, key: string, force = false) => post<{ removed: string[]; trashId: number }>("/canvas/deleteNode", { projectId, key, force }),
+  /** 回收站：24 小时内删除的节点 */
+  /** 一键去背景：用供应商的 rmbg 工作流抠出主体，作为该节点的新版本（返回 imageId 供轮询） */
+  removeBackground: (projectId: number, key: string) => post<{ imageId: number }>("/canvas/removeBackground", { projectId, key }),
+  listTrash: (projectId: number) => post<TrashItem[]>("/canvas/listTrash", { projectId }),
   restoreNode: (projectId: number, trashId: number) =>
     post<{ restored: string[]; keyMap: Record<string, string> }>("/canvas/restoreNode", { projectId, trashId }),
   bindVoice: (assetsId: number, audioId?: number) => post<unknown>("/cornerScape/updateAssetsAudio", audioId ? { assetsId, audioIds: [audioId] } : { assetsId }),

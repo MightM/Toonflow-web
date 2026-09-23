@@ -41,6 +41,10 @@ export interface CanvasContext {
   captureFrame?: (key: string, at: FrameAt) => void;
   /** 裁剪当前图片（拖裁剪框），裁出的图作为该节点的新版本；不提供时操作条上没有这个按钮 */
   openCrop?: (key: string) => void;
+  /** 缩放画幅：把主体缩进更大的画面里（留白），结果作为新版本；不提供时操作条上没有这个按钮 */
+  openFrame?: (key: string) => void;
+  /** 一键去背景：抠出主体（白底 + 透明 PNG），结果作为新版本；不提供时操作条上没有这个按钮 */
+  removeBackground?: (key: string) => void;
   /** 存入资产库。无限画布没有资产库概念，不提供时操作条上不显示这个按钮 */
   openSaveToAssets?: (key: string) => void;
   openPreview: (src: string, kind: "image" | "video" | "audio") => void;

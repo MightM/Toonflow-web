@@ -239,6 +239,7 @@ const MODEL_LABEL: Record<string, string> = {
   krea2_restyle: "参照改写",
   krea2_dual: "双图合成",
   krea2_multi: "多图合成",
+  rmbg: "去背景",
   h3_t2v: "文生视频",
   h3_i2v: "首帧生视频",
   h3_flf: "首尾帧生视频",
@@ -455,7 +456,7 @@ const styleLine = computed(() => (artStyle.value ? (ctx.artStyles?.value.find((s
 const previewWithStyle = computed(() => (styleLine.value ? `${previewText.value.trim()}\n${styleLine.value}` : previewText.value));
 
 /** 模板正文里有 {{需求}} 占位符时，不填就等于只把格式说明发给模型 */
-const needsPrompt = computed(() => !preset.value || preset.value.body.includes("{{需求}}"));
+const needsPrompt = computed(() => !preset.value || (preset.value.body.includes("{{需求}}") && !preset.value.optionalInput));
 const blockedReason = computed(() => {
   if (!model.value) return "请选择生成模型";
   if (!isVideo.value && preset.value?.requiresRef && !hasRefs.value) return `「${preset.value.name}」需要先把参考图连到这个节点`;

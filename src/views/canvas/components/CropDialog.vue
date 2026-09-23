@@ -2,7 +2,15 @@
   <Teleport to="body">
     <Transition name="crop">
       <div v-if="visible" class="crop-dialog" role="dialog" aria-modal="true" aria-label="裁剪图片">
-        <header class="bar">
+        <div class="stage">
+          <div ref="frameEl" class="frame" :class="{ loaded }">
+            <img ref="imgEl" :src="src" alt="" draggable="false" crossorigin="anonymous" @load="onLoad" @error="onError" />
+            <div v-if="loaded" class="box" :style="boxStyle" @pointerdown="startDrag('move', $event)">
+              <span v-for="handle in HANDLES" :key="handle" :class="['handle', handle]" @pointerdown.stop="startDrag(handle, $event)" />
+            </div>
+          </div>
+        </div>
+        <footer class="bar">
           <span class="title"><i-cutting-one size="16" />裁剪「{{ name }}」</span>
           <div class="ratios" role="radiogroup" aria-label="裁剪比例">
             <button
@@ -20,15 +28,7 @@
           <button type="button" class="ghost" :disabled="!loaded" @click="reset">重置</button>
           <button type="button" class="ghost" @click="close">取消</button>
           <button type="button" class="primary" :disabled="!loaded || !changed" title="Enter" @click="confirm">裁剪</button>
-        </header>
-        <div class="stage">
-          <div ref="frameEl" class="frame" :class="{ loaded }">
-            <img ref="imgEl" :src="src" alt="" draggable="false" crossorigin="anonymous" @load="onLoad" @error="onError" />
-            <div v-if="loaded" class="box" :style="boxStyle" @pointerdown="startDrag('move', $event)">
-              <span v-for="handle in HANDLES" :key="handle" :class="['handle', handle]" @pointerdown.stop="startDrag(handle, $event)" />
-            </div>
-          </div>
-        </div>
+        </footer>
         <p class="hint">拖动裁剪框内部移动，拖边或角调整大小；裁出的图作为这个节点的新版本，原图留在历史里（⌘Z 可切回）</p>
       </div>
     </Transition>
@@ -285,7 +285,7 @@ onBeforeUnmount(() => {
   inset: 0;
   z-index: 5000;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 1fr auto auto; // 图片在上，操作条在图片下方（顶部常被窗口标题栏 / 顶栏挡住）
   background: rgba(8, 9, 12, 0.94);
   backdrop-filter: blur(6px);
   color: #fff;
@@ -294,8 +294,9 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 12px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
   .title {
     display: inline-flex;
     align-items: center;
@@ -375,7 +376,7 @@ onBeforeUnmount(() => {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
   img {
     max-width: calc(100vw - 48px);
-    max-height: calc(100vh - 150px);
+    max-height: calc(100vh - 160px);
     width: auto;
     height: auto;
     user-select: none;

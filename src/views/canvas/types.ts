@@ -35,6 +35,21 @@ export interface AssetNodeDto extends BaseNode {
   promptState: string | null;
   audioBindState: string | null;
   voices: { id: number; name: string }[];
+  /** 从剧本正文提取出来的资产（关联到某一集）：删除前二次确认 */
+  inScript?: boolean;
+}
+
+/** 画布回收站里的一条（24 小时内删除的节点，可恢复） */
+export interface TrashItem {
+  trashId: number;
+  key: string;
+  name: string;
+  kind: "asset" | MediaKind | string;
+  assetType: AssetType | null;
+  states: number;
+  deletedAt: number;
+  expiresAt: number;
+  src: string | null;
 }
 
 /** 自由节点（标为角色的图片）绑定的音色：音色库资产或画布上的音频节点 */
@@ -149,6 +164,7 @@ export interface CanvasPreset {
   ratio: string;
   size: string;
   requiresRef: boolean;
+  optionalInput: boolean; // 正文里的 {{需求}} 可留空
   canPolish: boolean;
   steps: string[]; // 两步工作流的步骤名，如 ["换装定妆照", "人物换装"]；单步为空
   hint: string;

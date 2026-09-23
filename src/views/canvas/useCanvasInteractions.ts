@@ -447,18 +447,81 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     cropKey.value = key;
     cropVisible.value = true;
   }
-  /** CropDialog 裁好后：作为该节点的新版本上传，撤销时切回原版本（裁出的图仍留在历史里） */
-  async function applyCrop(payload: { base64Data: string; width: number; height: number }) {
-    const key = cropKey.value;
+  /** 前端处理过的图（裁剪 / 缩放画幅）作为该节点的新版本上传，撤销时切回原版本（处理后的图仍留在历史里） */
+  async function applyImageEdit(key: string | null, payload: { base64Data: string; width: number; height: number }, verb: string, failMsg: string) {
     const dto = key ? canvas.dtoByKey.value.get(key) : undefined;
     if (!key || !dto) return;
     const previous = dto.current?.imageId;
     await canvas.run(async () => {
       await canvasApi.upload({ projectId: projectId.value, base64Data: payload.base64Data, target: key });
-      if (previous) canvas.recordVersion(key, previous, `裁剪「${dto.name}」`);
+      if (previous) canvas.recordVersion(key, previous, `${verb}「${dto.name}」`);
       await canvas.refresh();
-      window.$message.success(`已裁剪为 ${payload.width} × ${payload.height}，原图在历史版本里，按 ${UNDO_HINT} 切回`);
-    }, "裁剪失败");
+      window.$message.success(`已${verb}为 ${payload.width} × ${payload.height}，原图在历史版本里，按 ${UNDO_HINT} 切回`);
+    }, failMsg);
+  }
+  const applyCrop = (payload: { base64Data: string; width: number; height: number }) => applyImageEdit(cropKey.value, payload, "裁剪", "裁剪失败");
+
+  // ─── 缩放画幅（主体缩进更大的画面里，双图合成时让人物与场景比例协调）────
+  const frameVisible = ref(false);
+  const frameKey = ref<string | null>(null);
+  const frameDto = computed(() => (frameKey.value ? canvas.dtoByKey.value.get(frameKey.value) : undefined));
+  const frameSrc = computed(() => frameDto.value?.current?.src?.replace(/\?size=\d+$/, "") ?? "");
+  const frameName = computed(() => frameDto.value?.name ?? "");
+  /** 对照图：与当前节点连向同一目标的其它图片参考（合成时它们会同框，缩放时拿来目测比例） */
+  const frameCompare = computed(() => {
+    const key = frameKey.value;
+    if (!key) return [];
+    const edges = canvas.data.value?.edges ?? [];
+    const targets = new Set(edges.filter((e) => e.kind === "ref" && e.source === key).map((e) => e.target));
+    const seen = new Set<string>();
+    const result: { key: string; name: string; src: string }[] = [];
+    for (const edge of edges) {
+      if (edge.kind !== "ref" || !targets.has(edge.target) || edge.source === key || seen.has(edge.source)) continue;
+      const dto = canvas.dtoByKey.value.get(edge.source);
+      const src = dto?.current?.kind === "image" ? dto.current.src?.replace(/\?size=\d+$/, "") : undefined;
+      if (!dto || !src) continue;
+      seen.add(edge.source);
+      result.push({ key: edge.source, name: dto.name, src });
+    }
+    return result;
+  });
+  function openFrame(key: string) {
+    const dto = canvas.dtoByKey.value.get(key);
+    if (!dto?.current?.src || dto.current.kind !== "image") return void window.$message.warning("这个节点还没有图片");
+    frameKey.value = key;
+    frameVisible.value = true;
+  }
+  const applyFrame = (payload: { base64Data: string; width: number; height: number }) => applyImageEdit(frameKey.value, payload, "缩放画幅", "缩放失败");
+
+  // ─── 一键去背景（ComfyUI rembg 工作流，结果作为新版本）────────────────
+  async function removeBackground(key: string) {
+    const dto = canvas.dtoByKey.value.get(key);
+    if (!dto?.current?.src || dto.current.kind !== "image") return void window.$message.warning("这个节点还没有图片");
+    await canvas.run(async () => {
+      const { imageId } = await canvasApi.removeBackground(projectId.value, key);
+      canvas.track(imageId);
+      await canvas.refresh();
+      window.$message.success(`正在给「${dto.name}」去背景，完成后自动切到新版本，原图留在历史里`);
+    }, "去背景失败");
+  }
+
+  // ─── 回收站 ──────────────────────────────────────────
+  const trashVisible = ref(false);
+  const openTrash = () => (trashVisible.value = true);
+  /** 从回收站恢复一条：恢复出来的节点选中并定位，撤销即再次删除 */
+  async function restoreTrash(trashId: number, name: string) {
+    const restored = await canvas.run(async () => {
+      const result = await canvasApi.restoreNode(projectId.value, trashId);
+      await canvas.refresh();
+      return result.restored;
+    }, "恢复失败");
+    if (!restored?.length) return false;
+    restored.forEach((key) => canvas.recordCreated(key, `恢复「${name}」`));
+    selectKeys(restored);
+    window.$message.success(`已恢复「${name}」，按 ${UNDO_HINT} 可再次删除`);
+    await nextTick();
+    await focusNode(restored[0]);
+    return true;
   }
 
   // ─── 预览 / 历史抽屉 ─────────────────────────────────
@@ -529,7 +592,14 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
 
   // ─── 键盘 ────────────────────────────────────────────
   const anyDialogOpen = () =>
-    historyVisible.value || preview.visible || voiceVisible.value || cropVisible.value || !!connectMenu.value || !!options.extraDialogOpen?.();
+    historyVisible.value ||
+    preview.visible ||
+    voiceVisible.value ||
+    cropVisible.value ||
+    frameVisible.value ||
+    trashVisible.value ||
+    !!connectMenu.value ||
+    !!options.extraDialogOpen?.();
   function isTyping(target: EventTarget | null) {
     const el = target as HTMLElement | null;
     return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName) || !!el.closest(".t-dialog, .t-drawer, .t-popup"));
@@ -660,6 +730,16 @@ export function useCanvasInteractions(options: CanvasInteractionOptions) {
     cropName,
     openCrop,
     applyCrop,
+    frameVisible,
+    frameSrc,
+    frameName,
+    frameCompare,
+    openFrame,
+    applyFrame,
+    removeBackground,
+    trashVisible,
+    openTrash,
+    restoreTrash,
     historyVisible,
     historyTarget,
     openHistory,

@@ -68,6 +68,7 @@
       <t-tooltip content="上传本地文件" placement="top"><button aria-label="上传本地文件" @click="uploadTo(null)"><i-upload size="20" /></button></t-tooltip>
       <t-tooltip content="从资产中心导入素材" placement="top"><button aria-label="从资产中心导入素材" @click="openLibrary"><i-box size="20" /></button></t-tooltip>
       <t-tooltip content="查看历史" placement="top"><button aria-label="查看历史" @click="openHistory(null)"><i-history size="20" /></button></t-tooltip>
+      <t-tooltip content="回收站（24 小时内删除的节点）" placement="top"><button aria-label="回收站" @click="openTrash"><i-recycle-bin size="20" /></button></t-tooltip>
       <span class="rule" />
       <t-tooltip content="资产模型绑定" placement="top"><button aria-label="资产模型绑定" @click="modelsVisible = true"><i-setting-two size="20" /></button></t-tooltip>
       <t-tooltip content="重新整理布局" placement="top"><button aria-label="重新整理布局" @click="relayout"><i-tree-diagram size="20" /></button></t-tooltip>
@@ -103,12 +104,14 @@
     <input ref="fileInput" type="file" hidden accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,audio/mpeg,audio/wav,audio/mp4" @change="onFilePicked" />
     <ConnectMenu :state="connectMenu" variant="free" @pick="onMenuPick" @close="connectMenu = null" />
     <HistoryDrawer v-model:visible="historyVisible" :target="historyTarget" @preview="openPreview" />
+    <TrashDrawer v-model:visible="trashVisible" @restore="restoreTrash" />
     <MediaLightbox v-model:visible="preview.visible" :src="preview.src" :kind="preview.kind" />
     <SaveToAssetsDialog v-model:visible="saveVisible" :node-key="saveKey" />
     <CreateStateDialog v-model:visible="stateVisible" :parent-key="stateParent" @create="onCreateState" />
     <AssetModelsDialog v-if="projectId" v-model:visible="modelsVisible" :project-id="projectId" @saved="canvas.refresh" />
     <VoicePicker v-model:visible="voiceVisible" :node-key="voiceKey" @bind="bindVoice" />
     <CropDialog v-model:visible="cropVisible" :src="cropSrc" :name="cropName" @confirm="applyCrop" />
+    <FrameDialog v-model:visible="frameVisible" :src="frameSrc" :name="frameName" :compare="frameCompare" @confirm="applyFrame" />
   </div>
 </template>
 
@@ -130,10 +133,12 @@ import AssetModelsDialog from "../canvas/components/AssetModelsDialog.vue";
 import RefEdge from "../canvas/components/RefEdge.vue";
 import MediaLightbox from "../canvas/components/MediaLightbox.vue";
 import HistoryDrawer from "../canvas/components/HistoryDrawer.vue";
+import TrashDrawer from "../canvas/components/TrashDrawer.vue";
 import ConnectMenu, { type ConnectMenuKind } from "../canvas/components/ConnectMenu.vue";
 import GroupActionBar from "../canvas/components/GroupActionBar.vue";
 import VoicePicker from "../canvas/components/VoicePicker.vue";
 import CropDialog from "../canvas/components/CropDialog.vue";
+import FrameDialog from "../canvas/components/FrameDialog.vue";
 import SaveToAssetsDialog from "../canvas/components/SaveToAssetsDialog.vue";
 import { canvasApi, readAsDataUrl } from "../canvas/api";
 import { CANVAS_CTX, type CanvasContext } from "../canvas/context";
@@ -194,6 +199,9 @@ const {
   historyVisible,
   historyTarget,
   openHistory,
+  trashVisible,
+  openTrash,
+  restoreTrash,
   preview,
   openPreview,
   deleteWithHint,
@@ -210,6 +218,13 @@ const {
   cropName,
   openCrop,
   applyCrop,
+  frameVisible,
+  frameSrc,
+  frameName,
+  frameCompare,
+  openFrame,
+  applyFrame,
+  removeBackground,
 } = useCanvasInteractions({
   flowId: "freeCanvas",
   canvas,
@@ -338,6 +353,8 @@ const ctx: CanvasContext = {
   setArtStyle: canvas.setArtStyle,
   captureFrame: (key, at) => void captureFrame(key, at),
   openCrop,
+  openFrame,
+  removeBackground,
   openCreateState,
   openVoice,
   openSaveToAssets: (key) => {

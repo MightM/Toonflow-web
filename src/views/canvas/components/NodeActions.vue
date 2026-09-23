@@ -13,7 +13,13 @@
     <t-tooltip v-if="(dto.kind === 'image' || isAsset) && ctx.openCrop" content="裁剪图片（裁出的图作为新版本）">
       <button class="icon" aria-label="裁剪" :disabled="!src" @click="ctx.openCrop?.(dto.key)"><i-cutting-one size="15" /></button>
     </t-tooltip>
-    <t-tooltip content="上传本地文件作为新版本">
+    <t-tooltip v-if="(dto.kind === 'image' || isAsset) && ctx.openFrame" content="缩放画幅：把主体缩进更大的画面里，双图合成时让人物和场景比例协调（结果作为新版本）">
+      <button class="icon" aria-label="缩放画幅" :disabled="!src" @click="ctx.openFrame?.(dto.key)"><i-zoom-out size="15" /></button>
+    </t-tooltip>
+    <t-tooltip v-if="(dto.kind === 'image' || isAsset) && ctx.removeBackground" content="一键去背景：抠出主体，白底 + 透明 PNG，原图留在历史版本">
+      <button class="icon" aria-label="去背景" :disabled="!src || busy" @click="ctx.removeBackground?.(dto.key)"><i-magic-wand size="15" /></button>
+    </t-tooltip>
+    <t-tooltip :content="isAsset ? '换图：上传本地图片替换当前图，旧图留在历史版本里' : '上传本地文件作为新版本'">
       <button class="icon" aria-label="上传" @click="ctx.uploadTo(dto.key)"><i-upload size="15" /></button>
     </t-tooltip>
     <t-tooltip content="下载当前版本">
@@ -56,6 +62,7 @@ const isRole = computed(() => (isAssetNode(props.dto) ? props.dto.assetType === 
 const voiceName = computed(() => (isAssetNode(props.dto) ? props.dto.voices[0]?.name : props.dto.voice?.name));
 const src = computed(() => props.dto.current?.src?.replace(/\?size=\d+$/, "") ?? null);
 const kind = computed(() => props.dto.current?.kind ?? "image");
+const busy = computed(() => props.dto.pendingImageIds.length > 0);
 function onCapture(option: DropdownOption) {
   ctx.captureFrame?.(props.dto.key, option.value as FrameAt);
 }

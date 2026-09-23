@@ -41,8 +41,8 @@ async function stop() {
   align-items: center;
   justify-content: center;
   gap: 6px;
-  background: color-mix(in srgb, var(--td-bg-color-container) 55%, transparent);
-  backdrop-filter: blur(2px);
+  // 不用 backdrop-filter：生成中转圈每帧都会让软件渲染重新模糊整张图
+  background: color-mix(in srgb, var(--td-bg-color-container) 72%, transparent);
 }
 .label {
   font-size: 11px;
